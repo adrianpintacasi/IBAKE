@@ -62,7 +62,7 @@ backend/
 
 1. Clone the repository and enter the backend folder:
    ```bash
-   git clone https://github.com/<your-username>/IBAKE.git
+   git clone https://github.com/adrianpintacasi/IBAKE.git
    cd IBAKE/backend
    ```
 
