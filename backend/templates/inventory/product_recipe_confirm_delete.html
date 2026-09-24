@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Delete Recipe - iBAKE Cakes & Pastries{% endblock %}
+{% block content %}
+<div class="container">
+    <h2>Delete Recipe</h2>
+    <div class="alert alert-danger">
+        <p>Are you sure you want to delete the recipe <strong>{{ object.recipe_number }} - {{ object.product.name }}</strong>?</p>
+        <p>This action cannot be undone.</p>
+    </div>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Delete</button>
+        <a href="{% url 'inventory:product_recipe_list' %}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %} 

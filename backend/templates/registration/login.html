@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Login - iBAKE Cakes & Pastries{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background: #667eea;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .sidebar {
+        display: none;
+    }
+    
+    .main-content {
+        margin-left: 0;
+        padding: 0;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .login-card {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        max-width: 400px;
+        width: 100%;
+    }
+    
+    .login-header {
+        background: #667eea;
+        color: white;
+        padding: 2rem;
+        text-align: center;
+    }
+    
+    .login-header h2 {
+        margin: 0;
+        font-weight: 600;
+    }
+    
+    .login-body {
+        padding: 2rem;
+    }
+    
+    .form-control {
+        border: 2px solid #e9ecef;
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        transition: all 0.2s ease;
+    }
+    
+    .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+    
+    .btn-primary {
+        background: #667eea;
+        border: none;
+        border-radius: 10px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+    
+    .btn-primary:hover {
+        background: #5a67d8;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-card">
+    <div class="login-header">
+        <h2>iBAKE</h2>
+        <p class="mb-0">Cakes & Pastries</p>
+    </div>
+    
+    <div class="login-body">
+        <form method="post" novalidate>
+            {% csrf_token %}
+            {{ form|crispy }}
+            
+            <div class="d-grid gap-2 mt-4">
+                <button type="submit" class="btn btn-primary">
+                    Login
+                </button>
+            </div>
+        </form>
+        
+        <div class="text-center mt-3">
+            <p class="mb-0">
+                <a href="{% url 'password_reset' %}" class="text-decoration-none" style="color: #667eea;">
+                    Forgot Password?
+                </a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %} 

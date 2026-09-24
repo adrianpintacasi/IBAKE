@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+
+{% block title %}Payroll Entries - iBAKE Cakes & Pastries{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Payroll Entries</h1>
+        <a href="{% url 'accounting:payroll_create' %}" class="btn btn-primary">
+            Add Payroll Entry
+        </a>
+    </div>
+
+    <!-- Search and Filter Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h6 class="mb-0">Search & Filter</h6>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label for="search" class="form-label">Search Employee</label>
+                    <input type="text" class="form-control" id="search" name="search" 
+                           placeholder="Search by employee name..." value="{{ request.GET.search }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="payment_method" class="form-label">Payment Method</label>
+                    <select class="form-select" id="payment_method" name="payment_method">
+                        <option value="">All Methods</option>
+                        <option value="CASH" {% if request.GET.payment_method == 'CASH' %}selected{% endif %}>Cash</option>
+                        <option value="BANK_TRANSFER" {% if request.GET.payment_method == 'BANK_TRANSFER' %}selected{% endif %}>Bank Transfer</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="date_from" class="form-label">Payment Date From</label>
+                    <input type="date" class="form-control" id="date_from" name="date_from" 
+                           value="{{ request.GET.date_from }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">&nbsp;</label>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Apply Filter</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Pay Period</th>
+                            <th>Basic Salary</th>
+                            <th>Overtime Pay</th>
+                            <th>Total Pay</th>
+                            <th>Payment Date</th>
+                            <th>Payment Method</th>
+                            <th>Journal Entry</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for payroll in payroll_entries %}
+                        <tr>
+                            <td><strong>{{ payroll.employee.full_name }}</strong></td>
+                            <td>
+                                {{ payroll.pay_period_start|date:"M d" }} - 
+                                {{ payroll.pay_period_end|date:"M d, Y" }}
+                            </td>
+                            <td>₱{{ payroll.basic_salary|floatformat:2 }}</td>
+                            <td>₱{{ payroll.overtime_pay|floatformat:2 }}</td>
+                            <td><strong>₱{{ payroll.total_pay|floatformat:2 }}</strong></td>
+                            <td>{{ payroll.payment_date|date:"M d, Y" }}</td>
+                            <td>
+                                <span class="badge 
+                                    {% if payroll.payment_method == 'CASH' %}bg-success
+                                    {% else %}bg-info
+                                    {% endif %}">
+                                    {{ payroll.get_payment_method_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if payroll.journal_entry %}
+                                    <a href="{% url 'accounting:journal_entry_detail' payroll.journal_entry.pk %}" 
+                                       class="text-decoration-none">
+                                        JE-{{ payroll.journal_entry.entry_number }}
+                                    </a>
+                                {% else %}
+                                    <span class="text-muted">No journal entry</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-outline-info" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#payrollModal{{ payroll.id }}">
+                                        View
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Payroll Detail Modal -->
+                        <div class="modal fade" id="payrollModal{{ payroll.id }}" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Payroll Details - {{ payroll.employee.full_name }}</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <dl class="row">
+                                            <dt class="col-sm-4">Employee:</dt>
+                                            <dd class="col-sm-8">{{ payroll.employee.full_name }}</dd>
+                                            
+                                            <dt class="col-sm-4">Pay Period:</dt>
+                                            <dd class="col-sm-8">{{ payroll.pay_period_start|date:"M d" }} - {{ payroll.pay_period_end|date:"M d, Y" }}</dd>
+                                            
+                                            <dt class="col-sm-4">Basic Salary:</dt>
+                                            <dd class="col-sm-8">₱{{ payroll.basic_salary|floatformat:2 }}</dd>
+                                            
+                                            <dt class="col-sm-4">Overtime Pay:</dt>
+                                            <dd class="col-sm-8">₱{{ payroll.overtime_pay|floatformat:2 }}</dd>
+                                            
+                                            <dt class="col-sm-4">Total Pay:</dt>
+                                            <dd class="col-sm-8"><strong>₱{{ payroll.total_pay|floatformat:2 }}</strong></dd>
+                                            
+                                            <dt class="col-sm-4">Payment Date:</dt>
+                                            <dd class="col-sm-8">{{ payroll.payment_date|date:"M d, Y" }}</dd>
+                                            
+                                            <dt class="col-sm-4">Payment Method:</dt>
+                                            <dd class="col-sm-8">{{ payroll.get_payment_method_display }}</dd>
+                                            
+                                            {% if payroll.notes %}
+                                            <dt class="col-sm-4">Notes:</dt>
+                                            <dd class="col-sm-8">{{ payroll.notes }}</dd>
+                                            {% endif %}
+                                        </dl>
+                                    </div>
+                                    <div class="modal-footer">
+                                        {% if payroll.journal_entry %}
+                                            <a href="{% url 'accounting:journal_entry_detail' payroll.journal_entry.pk %}" 
+                                               class="btn btn-outline-primary">View Journal Entry</a>
+                                        {% endif %}
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center">
+                                <p class="text-muted">No payroll entries found. <a href="{% url 'accounting:payroll_create' %}">Create the first payroll entry</a>.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

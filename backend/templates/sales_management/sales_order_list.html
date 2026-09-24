@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Sales Order</h2>
+<div style="text-align: right; margin-bottom: 1em;">
+    <a href="{% url 'sales_management:sales_order_add' %}" class="btn btn-primary">Create New Sales Order</a>
+</div>
+<table class="table table-bordered table-striped">
+    <thead>
+        <tr>
+            <th>Order ID</th>
+            <th>Date</th>
+            <th>Customer</th>
+            <th>Status</th>
+            <th>Total Amount</th>
+            <th>Amount Paid</th>
+            <th>Balance</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for order in orders %}
+        <tr>
+            <td>{{ order.sales_order_id }}</td>
+            <td>{{ order.order_date|date:"Y-m-d H:i" }}</td>
+            <td>{{ order.customer_name }}</td>
+            <td>
+                {% if order.status == 'Open' %}<span class="badge bg-warning text-dark">Open</span>{% endif %}
+                {% if order.status == 'New' %}<span class="badge bg-primary">New</span>{% endif %}
+                {% if order.status == 'Paid' %}<span class="badge bg-success">Paid</span>{% endif %}
+            </td>
+            <td>₱{{ order.total_amount|floatformat:2 }}</td>
+            <td>₱{{ order.amount_paid|floatformat:2 }}</td>
+            <td>₱{{ order.balance|floatformat:2 }}</td>
+            <td>
+                <button class="btn btn-info btn-sm view-details" data-id="{{ order.sales_order_id }}">View Details</button>
+                <button class="btn btn-danger btn-sm delete-order" data-id="{{ order.sales_order_id }}">Delete</button>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8">No sales orders found.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Modals will be loaded here -->
+<div id="modal-container"></div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+// View Details Modal
+$(document).on('click', '.view-details', function() {
+    var id = $(this).data('id');
+    console.log('View details clicked for order ID:', id);
+    $.get("{% url 'sales_management:ajax_order_details' 0 %}".replace('0', id), function(data) {
+        console.log('Response received:', data);
+        $('#modal-container').html(data.html);
+        $('#orderDetailModal').modal('show');
+    }).fail(function(xhr, status, error) {
+        console.error('AJAX error:', status, error);
+        alert('Error loading order details.');
+    });
+});
+
+// Delete Modal
+$(document).on('click', '.delete-order', function() {
+    var id = $(this).data('id');
+    console.log('Delete clicked for order ID:', id);
+    $.get("{% url 'sales_management:ajax_order_delete' 0 %}".replace('0', id), function(data) {
+        console.log('Delete response received:', data);
+        $('#modal-container').html(data.html);
+        $('#deleteOrderModal').modal('show');
+    }).fail(function(xhr, status, error) {
+        console.error('AJAX error:', status, error);
+        alert('Error loading delete confirmation.');
+    });
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,587 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard - iBAKE Cakes & Pastries{% endblock %}
+
+{% block extra_css %}
+<style>
+    .quick-action-btn {
+        padding: 8px 12px !important;
+        height: auto !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-decoration: none !important;
+        border-width: 1px !important;
+        border-radius: 4px !important;
+        transition: all 0.2s ease !important;
+        font-weight: 400 !important;
+        font-size: 0.875rem !important;
+    }
+    
+    .quick-action-btn i {
+        font-size: 1rem !important;
+        margin-right: 6px !important;
+        margin-bottom: 0 !important;
+    }
+    
+    .quick-action-btn:hover {
+        transform: none !important;
+        box-shadow: none !important;
+        text-decoration: none !important;
+    }
+    
+    /* Specific hover colors for each button */
+    .btn-outline-success:hover {
+        background-color: #28a745 !important;
+        border-color: #28a745 !important;
+        color: white !important;
+    }
+    
+    .btn-outline-primary:hover {
+        background-color: #007bff !important;
+        border-color: #007bff !important;
+        color: white !important;
+    }
+    
+    .btn-outline-info:hover {
+        background-color: #17a2b8 !important;
+        border-color: #17a2b8 !important;
+        color: white !important;
+    }
+    
+    .btn-outline-secondary:hover {
+        background-color: #6c757d !important;
+        border-color: #6c757d !important;
+        color: white !important;
+    }
+    
+    .btn-outline-warning:hover {
+        background-color: #ffc107 !important;
+        border-color: #ffc107 !important;
+        color: #212529 !important;
+    }
+    
+    .btn-outline-dark:hover {
+        background-color: #343a40 !important;
+        border-color: #343a40 !important;
+        color: white !important;
+    }
+    
+    /* Scrollable table styling */
+    .scrollable-table-container {
+        max-height: 350px;
+        overflow-y: auto;
+        position: relative;
+    }
+    
+    .scrollable-table-container .table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background-color: #f8f9fa !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="h3 mb-4">iBAKE Dashboard</h1>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <!-- Inventory Metrics -->
+    <div class="col-md-3">
+        <div class="card text-white" style="background-color: #4a90c2;">
+            <div class="card-body text-center p-3">
+                <h6 class="card-title mb-1">Raw Materials</h6>
+                <h4 class="mb-1">₱{{ total_stock_value|floatformat:0 }}</h4>
+                <small>Inventory Value</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white" style="background-color: #6ba755;">
+            <div class="card-body text-center p-3">
+                <h6 class="card-title mb-1">Finished Goods</h6>
+                <h4 class="mb-1">₱{{ finished_goods_value|floatformat:0 }}</h4>
+                <small>Total Worth</small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Accounting Metrics -->
+    <div class="col-md-3">
+        <div class="card text-white" style="background-color: #f0ad4e;">
+            <div class="card-body text-center p-3">
+                <h6 class="card-title mb-1">Today's Sales</h6>
+                <h4 class="mb-1">₱{{ today_sales|floatformat:0 }}</h4>
+                <small>Total Revenue</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white" style="background-color: #8e7cc3;">
+            <div class="card-body text-center p-3">
+                <h6 class="card-title mb-1">Total Revenue</h6>
+                <h4 class="mb-1">₱{{ total_revenue|floatformat:0 }}</h4>
+                <small>All Time</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-white" style="background-color: #dc3545;">
+            <div class="card-body text-center p-3">
+                <h6 class="card-title mb-1">Out of Stock</h6>
+                <h4 class="mb-1">{{ out_of_stock_count }}</h4>
+                <small>Critical Items</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white" style="background-color: #fd7e14;">
+            <div class="card-body text-center p-3">
+                <h6 class="card-title mb-1">Low Stock</h6>
+                <h4 class="mb-1">{{ low_stock_count }}</h4>
+                <small>Need Restocking</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white" style="background-color: #20c997;">
+            <div class="card-body text-center p-3">
+                <h6 class="card-title mb-1">Ongoing Production</h6>
+                <h4 class="mb-1">{{ active_productions }}</h4>
+                <small>In Progress</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white" style="background-color: #ffc107;">
+            <div class="card-body text-center p-3">
+                <h6 class="card-title mb-1">Expiring Finished Goods</h6>
+                <h4 class="mb-1">{{ expiring_count }}</h4>
+                <small>Next 3 Days</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header py-2">
+                <h5 class="card-title mb-0">Quick Actions</h5>
+            </div>
+            <div class="card-body py-3">
+                <div class="row">
+                    <div class="col-md-2">
+                        <a href="{% url 'inventory:stockin_add' %}" class="btn btn-outline-success w-100 mb-2 quick-action-btn">
+                            <i class="fas fa-plus"></i> Add Stock
+                        </a>
+                    </div>
+                    <div class="col-md-2">
+                        <a href="{% url 'inventory:production_add' %}" class="btn btn-outline-primary w-100 mb-2 quick-action-btn">
+                            <i class="fas fa-cogs"></i> New Production
+                        </a>
+                    </div>
+                    <div class="col-md-2">
+                        <a href="{% url 'sales_management:sales_order_add' %}" class="btn btn-outline-info w-100 mb-2 quick-action-btn">
+                            <i class="fas fa-shopping-cart"></i> New Sale
+                        </a>
+                    </div>
+                    <div class="col-md-2">
+                        <a href="{% url 'accounting:trial_balance' %}" class="btn btn-outline-secondary w-100 mb-2 quick-action-btn">
+                            <i class="fas fa-balance-scale"></i> Trial Balance
+                        </a>
+                    </div>
+                    <div class="col-md-2">
+                        <a href="{% url 'core:export_grocery_list' %}" class="btn btn-outline-warning w-100 mb-2 quick-action-btn">
+                            <i class="fas fa-download"></i> Grocery List
+                        </a>
+                    </div>
+                    <div class="col-md-2">
+                        <a href="{% url 'inventory:raw_material_inventory_status' %}" class="btn btn-outline-dark w-100 mb-2 quick-action-btn">
+                            <i class="fas fa-list"></i> Full Inventory
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <!-- Out of Stock Materials -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header py-2 d-flex justify-content-between align-items-center" style="background-color: #dc3545; color: white;">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-times-circle"></i> Out of Stock Materials
+                </h5>
+                <div>
+                    <a href="{% url 'core:export_out_of_stock' %}" class="btn btn-sm btn-light me-2" title="Export Out of Stock Materials">
+                        <i class="fas fa-download"></i> Export
+                    </a>
+                    <span class="badge bg-light text-dark">{{ out_of_stock_count }}</span>
+                </div>
+            </div>
+            <div class="card-body py-3">
+                {% if all_low_stock_materials %}
+                    {% with out_of_stock_items=all_low_stock_materials|dictsort:"material.name" %}
+                        {% if out_of_stock_items %}
+                            <div class="scrollable-table-container">
+                        <table class="table table-hover table-sm">
+                                    <thead class="table-light">
+                                <tr>
+                                    <th>Material</th>
+                                    <th>Available</th>
+                                            <th>Min. Required</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                        {% for item in out_of_stock_items %}
+                                            {% if item.status == 'critical' %}
+                                            <tr class="table-danger">
+                                                <td>
+                                                    <strong>{{ item.material.name|truncatechars:20 }}</strong>
+                                                    {% if item.material.brand %}
+                                                        <small class="text-muted"> - {{ item.material.brand|truncatechars:15 }}</small>
+                                        {% endif %}
+                                    </td>
+                                                <td><strong>0</strong> {{ item.material.base_unit }}</td>
+                                                <td>{{ item.minimum_stock_base|floatformat:2 }} {{ item.material.base_unit }}</td>
+                                </tr>
+                                            {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                        {% else %}
+                            <div class="text-center py-4">
+                                <i class="fas fa-check-circle text-success fa-3x mb-3"></i>
+                                <h6 class="text-success">No Out of Stock Items!</h6>
+                                <p class="text-muted mb-0">All materials are available.</p>
+                    </div>
+                        {% endif %}
+                    {% endwith %}
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-check-circle text-success fa-3x mb-3"></i>
+                        <h6 class="text-success">No Out of Stock Items!</h6>
+                        <p class="text-muted mb-0">All materials are available.</p>
+                    </div>
+                {% endif %}
+                <div class="text-center mt-3">
+                    <a href="{% url 'inventory:stockin_add' %}" class="btn btn-success btn-sm">
+                        <i class="fas fa-plus"></i> Add Stock Now
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Low Stock Materials-->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header py-2 d-flex justify-content-between align-items-center" style="background-color: #fd7e14; color: white;">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-exclamation-triangle"></i> Low Stock Materials
+                </h5>
+                <div>
+                    <a href="{% url 'core:export_low_stock' %}" class="btn btn-sm btn-light me-2" title="Export Low Stock Materials">
+                        <i class="fas fa-download"></i> Export
+                    </a>
+                    <span class="badge bg-light text-dark">{{ low_stock_count }}</span>
+                </div>
+            </div>
+            <div class="card-body py-3">
+                {% if all_low_stock_materials %}
+                    {% with low_stock_items=all_low_stock_materials|dictsort:"material.name" %}
+                        {% if low_stock_items %}
+                            <div class="scrollable-table-container">
+                    <table class="table table-hover table-sm">
+                                    <thead class="table-light">
+                            <tr>
+                                            <th>Material</th>
+                                            <th>Available</th>
+                                            <th>Min. Required</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                                        {% for item in low_stock_items %}
+                                            {% if item.status == 'low' %}
+                                            <tr class="table-warning">
+                                                <td>
+                                                    <strong>{{ item.material.name|truncatechars:20 }}</strong>
+                                                    {% if item.material.brand %}
+                                                        <small class="text-muted"> - {{ item.material.brand|truncatechars:15 }}</small>
+                                                    {% endif %}
+                                                </td>
+                                                <td><strong>{{ item.available_stock|floatformat:2 }}</strong> {{ item.material.base_unit }}</td>
+                                                <td>{{ item.minimum_stock_base|floatformat:2 }} {{ item.material.base_unit }}</td>
+                            </tr>
+                                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                        {% else %}
+                            <div class="text-center py-4">
+                                <i class="fas fa-check-circle text-success fa-3x mb-3"></i>
+                                <h6 class="text-success">All Stock Levels Good!</h6>
+                                <p class="text-muted mb-0">No materials are below minimum levels.</p>
+                            </div>
+                        {% endif %}
+                    {% endwith %}
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-check-circle text-success fa-3x mb-3"></i>
+                        <h6 class="text-success">All Stock Levels Good!</h6>
+                        <p class="text-muted mb-0">No materials are below minimum levels.</p>
+                    </div>
+                {% endif %}
+                <div class="text-center mt-3">
+                    <a href="{% url 'core:export_low_stock' %}" class="btn btn-warning btn-sm">
+                        <i class="fas fa-download"></i> Export Low Stock List
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Production and Expiring Products Row -->
+<div class="row mb-4">
+    <!-- Recent Production Activity -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header py-2" style="background-color: #20c997; color: white;">
+                <h5 class="card-title mb-0">Recent Production Activity</h5>
+            </div>
+            <div class="card-body py-3">
+                {% if recent_productions %}
+                <div class="scrollable-table-container">
+                    <table class="table table-hover table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Production #</th>
+                                <th>Products</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for production in recent_productions %}
+                            <tr>
+                                <td><code>{{ production.production_number }}</code></td>
+                                <td>
+                                    {% if production.batch_products.exists %}
+                                        {% for batch_product in production.batch_products.all|slice:":2" %}
+                                            {{ batch_product.product.name }}{% if not forloop.last %}, {% endif %}
+                                        {% endfor %}
+                                        {% if production.batch_products.count > 2 %}
+                                            <small class="text-muted">, +{{ production.batch_products.count|add:"-2" }} more</small>
+                                        {% endif %}
+                                    {% elif production.product %}
+                                        {{ production.product.name }}
+                                    {% else %}
+                                        <span class="text-muted">No products</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge 
+                                        {% if production.status == 'completed' %}bg-success
+                                        {% elif production.status == 'in_progress' %}bg-primary
+                                        {% elif production.status == 'cancelled' %}bg-danger
+                                        {% else %}bg-secondary{% endif %}">
+                                        {{ production.get_status_display }}
+                                    </span>
+                                </td>
+                                <td>{{ production.created_at|date:'M d' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-center mt-2">
+                    <a href="{% url 'inventory:production_list' %}" class="btn btn-outline-primary btn-sm">
+                        View All Productions
+                    </a>
+                </div>
+                {% else %}
+                <div class="text-center py-3">
+                    <p class="text-muted mb-0">No recent production activity.</p>
+                </div>
+                {% endif %}
+        </div>
+    </div>
+</div>
+
+    <!-- Expiring Products-->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header py-2 d-flex justify-content-between align-items-center" style="background-color: #f39c12; color: white;">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-clock"></i> Products Expiring Soon
+                </h5>
+                <span class="badge bg-light text-dark">{{ all_expiring_soon|length|add:expiring_week|length }}</span>
+            </div>
+            <div class="card-body py-3">
+                {% if all_expiring_soon or expiring_week %}
+                    <div class="scrollable-table-container">
+                    <table class="table table-hover table-sm">
+                            <thead class="table-light">
+                            <tr>
+                                <th>Product</th>
+                                <th>Batch</th>
+                                <th>Remaining</th>
+                                <th>Expires</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                                <!-- Critical - Expiring in 3 days -->
+                                {% for item in all_expiring_soon %}
+                                <tr class="table-danger">
+                                    <td>
+                                        <strong>{{ item.product.name|truncatechars:15 }}</strong>
+                                        <small class="text-danger"> - <i class="fas fa-exclamation-triangle"></i> Critical</small>
+                                    </td>
+                                    <td><code>{{ item.batch_number|truncatechars:10 }}</code></td>
+                                    <td>{{ item.remaining_quantity }} {{ item.unit }}</td>
+                                    <td>
+                                        {{ item.expiry_date|date:"M d" }}
+                                        <br><small class="text-danger">{{ item.expiry_date|timeuntil }}</small>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                
+                                <!-- Warning - Expiring in 4-7 days -->
+                                {% for item in expiring_week %}
+                            <tr class="table-warning">
+                                    <td>
+                                        <strong>{{ item.product.name|truncatechars:15 }}</strong>
+                                        <small class="text-warning"> - <i class="fas fa-clock"></i> Soon</small>
+                                    </td>
+                                    <td><code>{{ item.batch_number|truncatechars:10 }}</code></td>
+                                <td>{{ item.remaining_quantity }} {{ item.unit }}</td>
+                                    <td>
+                                        {{ item.expiry_date|date:"M d" }}
+                                        <br><small class="text-warning">{{ item.expiry_date|timeuntil }}</small>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="text-center mt-3">
+                        <a href="{% url 'inventory:finished_goods_inventory_list' %}" class="btn btn-warning btn-sm">
+                            <i class="fas fa-eye"></i> Manage Expiring Products
+                        </a>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-calendar-check text-success fa-3x mb-3"></i>
+                        <h6 class="text-success">No Products Expiring Soon!</h6>
+                        <p class="text-muted mb-0">All products have sufficient shelf life.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Financial Activity -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header py-2" style="background-color: #6c757d; color: white;">
+                <h5 class="card-title mb-0">Recent Financial Activity</h5>
+            </div>
+            <div class="card-body py-3">
+                {% if recent_journals %}
+                <div style="overflow-x: auto;">
+                    <table class="table table-hover table-sm" style="min-width: 700px;">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="min-width: 80px;">Entry #</th>
+                                <th style="min-width: 200px;">Description</th>
+                                <th style="min-width: 100px;">Date</th>
+                                <th style="min-width: 100px;">Amount</th>
+                                <th style="min-width: 120px;">Type</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for journal in recent_journals %}
+                            <tr>
+                                <td><code>{{ journal.entry_number }}</code></td>
+                                <td>{{ journal.description|truncatechars:40 }}</td>
+                                <td>{{ journal.date|date:'M d, Y' }}</td>
+                                <td>
+                                    ₱{{ journal.get_total_debits|floatformat:2 }}
+                                </td>
+                                <td>
+                                    {% if journal.reference_type == 'sales_order' %}
+                                        <span class="badge bg-success">Sales Order</span>
+                                    {% elif journal.reference_type == 'sales_payment' %}
+                                        <span class="badge bg-info">Sales Payment</span>
+                                    {% elif journal.reference_type == 'stock_in' %}
+                                        <span class="badge bg-warning text-dark">Stock In</span>
+                                    {% elif journal.reference_type == 'production' %}
+                                        <span class="badge bg-primary">Production</span>
+                                    {% elif journal.reference_type == 'payroll' %}
+                                        <span class="badge bg-dark">Payroll</span>
+                                    {% elif journal.reference_type == 'utility' %}
+                                        <span class="badge bg-secondary">Utility</span>
+                                    {% elif journal.reference_type == 'cash_transaction' %}
+                                        <span class="badge bg-danger">Cash Transaction</span>
+                                    {% elif 'cash' in journal.description|lower %}
+                                        <span class="badge bg-warning text-dark">CASH RELATED</span>
+                                    {% elif journal.reference_type == 'expired_goods' %}
+                                        <span class="badge bg-danger">Expired Goods</span>
+                                    {% elif journal.reference_type == 'production_waste' %}
+                                        <span class="badge bg-warning">Production Waste</span>
+                                    {% elif journal.reference_type == 'material_return' %}
+                                        <span class="badge bg-info">Material Return</span>
+                                    {% elif journal.reference_type == 'adjustment' %}
+                                        <span class="badge bg-secondary">Adjustment</span>
+                                    {% elif journal.reference_type == 'owner_investment' %}
+                                        <span class="badge bg-success">Owner Investment</span>
+                                    {% elif journal.reference_type == 'owner_withdrawal' %}
+                                        <span class="badge bg-warning">Owner Withdrawal</span>
+                                    {% elif not journal.reference_type %}
+                                        <span class="badge bg-light text-dark">Manual Entry</span>
+                                    {% else %}
+                                        <span class="badge bg-light text-dark">{{ journal.reference_type|title }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-center mt-2">
+                    <a href="{% url 'accounting:journal_entry_list' %}" class="btn btn-outline-primary btn-sm me-2">
+                        View All Entries
+                    </a>
+                    <a href="{% url 'accounting:trial_balance' %}" class="btn btn-outline-secondary btn-sm">
+                        Trial Balance
+                    </a>
+                </div>
+                {% else %}
+                <div class="text-center py-3">
+                    <p class="text-muted mb-0">No recent financial activity.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %} 

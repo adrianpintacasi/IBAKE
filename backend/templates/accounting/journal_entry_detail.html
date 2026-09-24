@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+
+{% block title %}Journal Entry {{ journal_entry.entry_number }} - iBAKE Cakes & Pastries{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3">Journal Entry: {{ journal_entry.entry_number }}</h1>
+                <a href="{% url 'accounting:journal_entry_list' %}" class="btn btn-secondary">
+                    Back to List
+                </a>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Entry Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Date:</strong> {{ journal_entry.date|date:"M d, Y" }}</p>
+                            <p><strong>Reference Type:</strong> 
+                                {% if journal_entry.reference_type %}
+                                    <span class="badge bg-info">{{ journal_entry.reference_type|title }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Manual Entry</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Created:</strong> {{ journal_entry.created_at|date:"M d, Y g:i A" }}</p>
+                            {% if journal_entry.created_by %}
+                                <p><strong>Created By:</strong> {{ journal_entry.created_by.username }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12">
+                            <p><strong>Description:</strong> {{ journal_entry.description }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Transactions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Account</th>
+                                    <th>Description</th>
+                                    <th class="text-end">Debit</th>
+                                    <th class="text-end">Credit</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transaction in journal_entry.transaction_set.all %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ transaction.account.code }}</strong><br>
+                                        <small class="text-muted">{{ transaction.account.name }}</small>
+                                    </td>
+                                    <td>{{ transaction.description }}</td>
+                                    <td class="text-end">
+                                        {% if transaction.debit_amount %}
+                                            ₱{{ transaction.debit_amount|floatformat:2 }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        {% if transaction.credit_amount %}
+                                            ₱{{ transaction.credit_amount|floatformat:2 }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted">No transactions found.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="table-secondary">
+                                <tr>
+                                    <th colspan="2">Totals:</th>
+                                    <th class="text-end">₱{{ journal_entry.get_total_debits|floatformat:2 }}</th>
+                                    <th class="text-end">₱{{ journal_entry.get_total_credits|floatformat:2 }}</th>
+                                </tr>
+                                <tr>
+                                    <th colspan="4" class="text-center">
+                                        {% if journal_entry.is_balanced %}
+                                            <span class="badge bg-success">Balanced ✓</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Not Balanced ✗</span>
+                                        {% endif %}
+                                    </th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Raw Material Inventory Status</h2>
+    
+    <!-- Filter Form -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label for="{{ filter_form.search.id_for_label }}" class="form-label">Search Material</label>
+                    {{ filter_form.search }}
+                </div>
+                <div class="col-md-3">
+                    <label for="{{ filter_form.status.id_for_label }}" class="form-label">Status</label>
+                    {{ filter_form.status }}
+                </div>
+                <div class="col-md-3">
+                    <label for="{{ filter_form.category.id_for_label }}" class="form-label">Category</label>
+                    {{ filter_form.category }}
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">Filter</button>
+                    <a href="{% url 'inventory:raw_material_inventory_status' %}" class="btn btn-outline-secondary">Clear</a>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Material</th>
+                            <th>Current Stock</th>
+                            <th>Minimum Stock</th>
+                            <th>Status</th>
+                            <th>Next Expiry Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in inventory_data %}
+                        <tr>
+                            <td>{{ item.material.name }}{% if item.material.brand %} - {{ item.material.brand }}{% endif %}</td>
+                            <td>{{ item.current_stock }}</td>
+                            <td>{{ item.minimum_stock }}</td>
+                            <td>
+                                {% if item.status == 'Sufficient' %}
+                                    <span class="badge bg-success">Sufficient</span>
+                                {% elif item.status == 'Low' %}
+                                    <span class="badge bg-warning text-dark">Low</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Out of Stock</span>
+                                {% endif %}
+                            </td>
+                            <td>{% if item.soonest_expiry %}{{ item.soonest_expiry|date:'Y-m-d' }}{% else %}-{% endif %}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="text-center">No raw materials found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

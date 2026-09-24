@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block title %}Home - iBAKE Cakes & Pastries{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <h1 class="display-4 mb-4">Welcome to iBAKE Cakes & Pastries</h1>
+            <p class="lead">Where passion meets perfection - crafting sweet memories one bite at a time.</p>
+            
+            {% if user.is_authenticated %}
+                <div class="mt-4">
+                    <a href="{% url 'core:dashboard' %}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-tachometer-alt"></i> Go to Dashboard
+                    </a>
+                </div>
+            {% else %}
+                <div class="mt-4">
+                    <a href="{% url 'login' %}" class="btn btn-primary btn-lg me-2">
+                        <i class="fas fa-sign-in-alt"></i> Login
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

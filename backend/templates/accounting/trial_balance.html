@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+
+{% block title %}Trial Balance - iBAKE Cakes & Pastries{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="h3" style="color: #2C3E50;">Trial Balance</h1>
+                <div>
+                    <a href="{% url 'accounting:trial_balance_export_csv' %}{% if request.GET.as_of_date %}?as_of_date={{ request.GET.as_of_date }}{% endif %}" 
+                       class="btn btn-success">Export CSV</a>
+                    <a href="{% url 'accounting:dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Form -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="{{ form.as_of_date.id_for_label }}" class="form-label">As of Date</label>
+                            {{ form.as_of_date }}
+                        </div>
+                        <div class="col-md-4">
+                            <label for="{{ form.account_type.id_for_label }}" class="form-label">Account Type</label>
+                            {{ form.account_type }}
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary me-2">Filter</button>
+                            <a href="{% url 'accounting:trial_balance' %}" class="btn btn-outline-secondary">Clear</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Trial Balance -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">iBAKE Cakes & Pastries Trial Balance</h4>
+                    <p class="mb-0 text-muted">As of {% now "M d, Y" %}</p>
+                </div>
+                <div class="card-body">
+                    {% if trial_balance_data %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Account Code</th>
+                                    <th>Account Name</th>
+                                    <th>Type</th>
+                                    <th class="text-end">Debit</th>
+                                    <th class="text-end">Credit</th>
+                                </tr>
+                            </thead>
+                            <tbody style="color: #667eea;">
+                                {% for item in trial_balance_data %}
+                                <tr>
+                                    <td><strong>{{ item.code }}</strong></td>
+                                    <td>{{ item.name }}</td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if item.type == 'ASSET' %}bg-primary
+                                            {% elif item.type == 'LIABILITY' %}bg-danger
+                                            {% elif item.type == 'EQUITY' %}bg-success
+                                            {% elif item.type == 'REVENUE' %}bg-info
+                                            {% else %}bg-warning{% endif %}">
+                                            {{ item.type }}
+                                        </span>
+                                    </td>
+                                    <td class="text-end">
+                                        {% if item.debit_amount > 0 %}
+                                            ₱{{ item.debit_amount|floatformat:2 }}
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        {% if item.credit_amount > 0 %}
+                                            ₱{{ item.credit_amount|floatformat:2 }}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                
+                                <!-- Totals Row -->
+                                <tr class="table-dark">
+                                    <td colspan="3"><strong>TOTALS</strong></td>
+                                    <td class="text-end"><strong>₱{{ total_debits|floatformat:2 }}</strong></td>
+                                    <td class="text-end"><strong>₱{{ total_credits|floatformat:2 }}</strong></td>
+                                </tr>
+                                
+                                {% if not is_balanced %}
+                                <!-- Discrepancy Warning -->
+                                <tr class="table-warning">
+                                    <td colspan="3"><strong>DISCREPANCY</strong></td>
+                                    <td class="text-end"><strong>₱{{ difference|floatformat:2 }}</strong></td>
+                                    <td class="text-end"><strong>-</strong></td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+</div>
+{% endblock %} 

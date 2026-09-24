@@ -1,0 +1,46 @@
+<div>
+    <h5>Stock In Information</h5>
+    <ul class="list-group mb-3">
+        <li class="list-group-item"><strong>Employee:</strong> {{ stockin.employee }}</li>
+        <li class="list-group-item"><strong>Date:</strong> {{ stockin.date }}</li>
+        <li class="list-group-item"><strong>Reference Number:</strong> {{ stockin.reference_number }}</li>
+        <li class="list-group-item">
+            <strong>Payment Method:</strong> 
+            <span class="badge bg-{% if stockin.payment_method == 'cash' %}success{% else %}warning{% endif %}">
+                {{ stockin.get_payment_method_display }}
+            </span>
+        </li>
+        <li class="list-group-item"><strong>Notes:</strong> {{ stockin.notes }}</li>
+    </ul>
+    <h6>Items</h6>
+    <div class="table-responsive">
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Material</th>
+                    <th>Unit</th>
+                    <th>Quantity</th>
+                    <th>Unit Price</th>
+                    <th>Expiry Date</th>
+                    <th>Total Stock</th>
+                    <th>Total Cost</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for detail in details %}
+                <tr>
+                    <td>{{ detail.material.name }}{% if detail.material.brand %} - {{ detail.material.brand }}{% endif %}</td>
+                    <td>{{ detail.unit }}</td>
+                    <td>{{ detail.quantity }}</td>
+                    <td>{{ detail.unit_price }}</td>
+                    <td>{% if detail.expiry_date %}{{ detail.expiry_date|date:'Y-m-d' }}{% else %}-{% endif %}</td>
+                    <td>{{ detail.total_stock }}{{ detail.base_unit }}</td>
+                    <td>{{ detail.total_cost }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center">No items found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div> 

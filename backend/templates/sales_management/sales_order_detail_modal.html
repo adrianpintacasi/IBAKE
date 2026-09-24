@@ -1,0 +1,148 @@
+<div class="modal fade" id="orderDetailModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Sales Order #{{ order.sales_order_id }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        
+        <!-- Header Info -->
+        <div class="row mb-4">
+          <div class="col-md-4">
+            <label class="form-label text-muted small">Customer</label>
+            <div class="fw-bold">{{ order.customer_name }}</div>
+            <div class="text-muted small">{{ order.customer_address }}</div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label text-muted small">Order Date</label>
+            <div>{{ order.order_date|date:"M d, Y g:i A" }}</div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label text-muted small">Status</label>
+            <div>
+              {% if order.status == 'Open' %}
+                <span class="badge bg-warning text-dark">Open</span>
+              {% elif order.status == 'New' %}
+                <span class="badge bg-primary">New</span>
+              {% elif order.status == 'Paid' %}
+                <span class="badge bg-success">Paid</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        
+        <!-- Order Items -->
+        <div class="mb-4">
+          <h6 class="border-bottom pb-2">Order Items</h6>
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th class="text-center">Qty</th>
+                <th class="text-end">Unit Price</th>
+                <th class="text-center">Discount</th>
+                <th class="text-end">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in order.salesorderitem_set.all %}
+              <tr>
+                <td>{{ item.product.name }}</td>
+                <td class="text-center">{{ item.quantity }}</td>
+                <td class="text-end">₱{{ item.unit_price|floatformat:2 }}</td>
+                <td class="text-center">
+                  {% if item.discount > 0 %}
+                    {{ item.discount|floatformat:1 }}%
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td class="text-end">₱{{ item.subtotal|floatformat:2 }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        
+        <!-- Payment Summary -->
+        <div class="row">
+          <div class="col-md-8">
+            <h6 class="border-bottom pb-2">Payment Summary</h6>
+            <table class="table table-borderless table-sm">
+              <tr>
+                <td>Total Amount:</td>
+                <td class="text-end fw-bold">₱{{ order.total_amount|floatformat:2 }}</td>
+              </tr>
+              <tr>
+                <td>Amount Paid:</td>
+                <td class="text-end">₱{{ order.amount_paid|floatformat:2 }}</td>
+              </tr>
+              <tr class="border-top">
+                <td class="fw-bold">Balance Due:</td>
+                <td class="text-end fw-bold">₱{{ order.balance|floatformat:2 }}</td>
+              </tr>
+            </table>
+          </div>
+          
+          <!-- Add Payment -->
+          <div class="col-md-4">
+            {% if order.status != 'Paid' %}
+            <h6 class="border-bottom pb-2">Add Payment</h6>
+            <form id="addPaymentForm">
+              {% csrf_token %}
+              <input type="hidden" name="order_id" value="{{ order.sales_order_id }}">
+              <div class="mb-3">
+                <label class="form-label small">Payment Amount</label>
+                <input type="number" name="payment_amount" class="form-control" 
+                       step="0.01" min="0.01" max="{{ order.balance }}" 
+                       placeholder="0.00" required>
+                <small class="text-muted">Max: ₱{{ order.balance|floatformat:2 }}</small>
+              </div>
+              <button type="submit" class="btn btn-primary w-100">Add Payment</button>
+            </form>
+            {% else %}
+            <div class="text-center p-3">
+              <h6 class="text-success">Order Complete</h6>
+              <p class="text-muted small mb-0">This order has been fully paid.</p>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+$('#addPaymentForm').submit(function(e) {
+    e.preventDefault();
+    
+    var submitBtn = $(this).find('button[type="submit"]');
+    var originalText = submitBtn.text();
+    submitBtn.prop('disabled', true).text('Processing...');
+    
+    $.post("{% url 'sales_management:ajax_add_payment' %}", $(this).serialize())
+    .done(function(data) {
+        if (data.success) {
+            submitBtn.text('Payment Added!');
+            $('#addPaymentForm input[name="payment_amount"]').val('');
+            
+            setTimeout(function() {
+                location.reload();
+            }, 1500);
+        } else {
+            alert('Error adding payment: ' + (data.error || 'Unknown error'));
+            submitBtn.prop('disabled', false).text(originalText);
+        }
+    })
+    .fail(function() {
+        alert('Error connecting to server.');
+        submitBtn.prop('disabled', false).text(originalText);
+    });
+});
+</script> 

@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+    {% if form.instance.pk %}
+        Edit Account - iBAKE Cakes & Pastries
+    {% else %}
+        Add Account - iBAKE Cakes & Pastries
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="mb-0">
+                        {% if form.instance.pk %}
+                            Edit Account
+                        {% else %}
+                            Add New Account
+                        {% endif %}
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ form|crispy }}
+                        <div class="mt-3">
+                            <button type="submit" class="btn btn-primary">
+                                {% if form.instance.pk %}
+                                    Update Account
+                                {% else %}
+                                    Create Account
+                                {% endif %}
+                            </button>
+                            <a href="{% url 'accounting:chart_of_accounts' %}" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

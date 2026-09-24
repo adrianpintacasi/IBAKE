@@ -1,0 +1,27 @@
+<div>
+    <h5>Recipe: {{ recipe.recipe_number }} - {{ recipe.product.name }}</h5>
+    <p><strong>Description:</strong> {{ recipe.description }}</p>
+    <p><strong>Status:</strong> {% if recipe.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-danger">Inactive</span>{% endif %}</p>
+    <hr>
+    <h6>Ingredients / Materials</h6>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Material</th>
+                <th>Unit</th>
+                <th>Quantity</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for detail in details %}
+            <tr>
+                <td>{{ detail.material.name }}{% if detail.material.brand %} - {{ detail.material.brand }}{% endif %}</td>
+                <td>{{ detail.unit }}</td>
+                <td>{{ detail.quantity }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-center">No materials found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div> 

@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        Confirm Delete Production
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <strong>Warning:</strong> This action cannot be undone.
+                    </div>
+                    
+                    <p>Are you sure you want to delete the following production?</p>
+                    
+                    <div class="bg-light p-3 rounded mb-3">
+                        <div class="row">
+                            <div class="col-sm-4"><strong>Production Number:</strong></div>
+                            <div class="col-sm-8">{{ object.production_number }}</div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-4"><strong>Status:</strong></div>
+                            <div class="col-sm-8">
+                                <span class="badge 
+                                    {% if object.status == 'completed' %}bg-success
+                                    {% elif object.status == 'in_progress' %}bg-warning text-dark
+                                    {% elif object.status == 'cancelled' %}bg-danger
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ object.get_status_display }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-4"><strong>Products:</strong></div>
+                            <div class="col-sm-8">
+                                {% if object.batch_type == 'single' and object.product %}
+                                    {{ object.product.name }}
+                                {% else %}
+                                    Mixed Batch ({{ object.batch_products.count }} products)
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-4"><strong>Date Started:</strong></div>
+                            <div class="col-sm-8">
+                                {% if object.date_started %}
+                                    {{ object.date_started|date:'M d, Y' }}
+                                {% else %}
+                                    Not started
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'inventory:production_list' %}" class="btn btn-secondary">
+                                Cancel
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                Yes, Delete Production
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

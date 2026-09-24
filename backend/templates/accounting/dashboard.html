@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+
+{% block title %}Accounting Dashboard - iBAKE Cakes & Pastries{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-4">Accounting Dashboard</h1>
+        </div>
+    </div>
+
+    <!-- Key Metrics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <h6 class="card-title">Cash Balance</h6>
+                    <h4>₱{{ cash_balance|floatformat:2 }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark">
+                <div class="card-body text-center">
+                    <h6 class="card-title">Accounts Receivable</h6>
+                    <h4>₱{{ accounts_receivable|floatformat:2 }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body text-center">
+                    <h6 class="card-title">Total Inventory</h6>
+                    <h4>₱{{ raw_materials_inventory|add:finished_goods_inventory|add:work_in_progress|floatformat:2 }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center">
+                    <h6 class="card-title">Sales Revenue</h6>
+                    <h4>₱{{ sales_revenue|floatformat:2 }}</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <a href="{% url 'accounting:trial_balance' %}" class="btn btn-outline-primary btn-block mb-2">
+                                📊 Trial Balance
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'accounting:payroll_create' %}" class="btn btn-outline-success btn-block mb-2">
+                                💰 Add Payroll
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'accounting:utility_create' %}" class="btn btn-outline-warning btn-block mb-2">
+                                🔌 Add Utility
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'accounting:cash_transaction_create' %}" class="btn btn-outline-info btn-block mb-2">
+                                💵 Cash Transaction
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activities -->
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6>Recent Journal Entries</h6>
+                    <a href="{% url 'accounting:journal_entry_list' %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if recent_entries %}
+                        {% for entry in recent_entries %}
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div>
+                                <small class="text-muted">{{ entry.date }}</small><br>
+                                <strong>{{ entry.entry_number }}</strong><br>
+                                <small>{{ entry.description|truncatechars:30 }}</small>
+                            </div>
+                            <span class="badge bg-secondary">₱{{ entry.get_total_debits|floatformat:0 }}</span>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">No recent entries</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6>Recent Payroll</h6>
+                    <a href="{% url 'accounting:payroll_list' %}" class="btn btn-sm btn-outline-success">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if recent_payroll %}
+                        {% for payroll in recent_payroll %}
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div>
+                                <small class="text-muted">{{ payroll.payment_date }}</small><br>
+                                                                          <strong>{{ payroll.employee.full_name }}</strong><br>
+                                <small>{{ payroll.pay_period_start }} - {{ payroll.pay_period_end }}</small>
+                            </div>
+                            <span class="badge bg-success">₱{{ payroll.total_pay|floatformat:0 }}</span>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">No recent payroll</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6>Recent Utilities</h6>
+                    <a href="{% url 'accounting:utility_list' %}" class="btn btn-sm btn-outline-warning">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if recent_utilities %}
+                        {% for utility in recent_utilities %}
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div>
+                                <small class="text-muted">{{ utility.payment_date }}</small><br>
+                                <strong>{{ utility.get_utility_type_display }}</strong><br>
+                                <small>{{ utility.description|truncatechars:25 }}</small>
+                            </div>
+                            <span class="badge bg-warning text-dark">₱{{ utility.amount|floatformat:0 }}</span>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">No recent utilities</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reports Section -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Financial Reports</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <a href="{% url 'accounting:trial_balance' %}" class="btn btn-outline-primary btn-block">
+                                📊 Trial Balance
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

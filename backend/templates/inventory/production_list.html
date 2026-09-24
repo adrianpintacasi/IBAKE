@@ -1,0 +1,736 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    /* Custom button colors to match design */
+    .btn-view {
+        background-color: #17a2b8 !important;
+        border-color: #17a2b8 !important;
+        color: white !important;
+    }
+    
+    .btn-view:hover {
+        background-color: #138496 !important;
+        border-color: #117a8b !important;
+    }
+    
+    .btn-edit {
+        background-color: #fd7e14 !important;
+        border-color: #fd7e14 !important;
+        color: white !important;
+    }
+    
+    .btn-edit:hover {
+        background-color: #e8690b !important;
+        border-color: #dc6108 !important;
+    }
+    
+    .btn-delete {
+        background-color: #dc3545 !important;
+        border-color: #dc3545 !important;
+        color: white !important;
+    }
+    
+    .btn-delete:hover {
+        background-color: #c82333 !important;
+        border-color: #bd2130 !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<div class="container mt-4">
+    <h2 class="mb-4">Production Records</h2>
+    <div class="mb-3 d-flex justify-content-between">
+        <div>
+            <!-- Status Filter -->
+            <select id="statusFilter" class="form-select" style="width: auto; display: inline-block;">
+                <option value="">All Status</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+            </select>
+        </div>
+        <div>
+            <a href="{% url 'inventory:production_add' %}" class="btn btn-success">
+                Add Production
+            </a>
+        </div>
+    </div>
+    
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Production Number</th>
+                            <th>Products</th>
+                            <th>Date Started</th>
+                            <th>Date Finished</th>
+                            <th>Employee</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for production in productions %}
+                        <tr data-status="{{ production.status }}" data-production-id="{{ production.pk }}">
+                            <td>
+                                <strong>{{ production.production_number }}</strong>
+                            </td>
+                            <td>
+                                {% if production.batch_products.exists %}
+                                    Mixed Batch ({{ production.batch_products.count }} products)
+                                {% else %}
+                                    <span class="text-muted">No products</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if production.date_started %}
+                                    {{ production.date_started|date:'M d, Y' }}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if production.date_finished %}
+                                    {{ production.date_finished|date:'M d, Y' }}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ production.employee|default:"N/A" }}</td>
+                            <td>
+                                <span class="badge 
+                                    {% if production.status == 'completed' %}bg-success
+                                    {% elif production.status == 'in_progress' %}bg-warning text-dark
+                                    {% elif production.status == 'cancelled' %}bg-danger
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ production.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="d-flex gap-1">
+                                    <button class="btn btn-sm btn-view view-details-btn" 
+                                            data-id="{{ production.pk }}" 
+                                            title="View Details">
+                                        View
+                                    </button>
+                                    {% if production.can_edit %}
+                                        <a href="{% url 'inventory:production_edit' production.pk %}" 
+                                           class="btn btn-sm btn-edit" 
+                                           title="Edit">
+                                            Edit
+                                        </a>
+                                    {% endif %}
+                                    {% if production.status != 'completed' %}
+                                        <button class="btn btn-sm btn-delete delete-production-btn"
+                                                data-id="{{ production.pk }}"
+                                                data-number="{{ production.production_number }}"
+                                                title="Delete">
+                                            Delete
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center py-4">
+                                <div class="text-muted">
+                                    No production records found.
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Production Details Modal -->
+<div class="modal fade" id="productionDetailsModal" tabindex="-1" aria-labelledby="productionDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="productionDetailsModalLabel">Production Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="productionDetailsModalBody">
+                <!-- Details loaded here via AJAX -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Production Confirmation Modal -->
+<div class="modal fade" id="cancelProductionModal" tabindex="-1" aria-labelledby="cancelProductionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="cancelProductionModalLabel">
+                    Cancel Production
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Are you sure you want to cancel this production?</strong></p>
+                <p class="text-muted mb-3">Production: <span id="cancelProductionNumber"></span></p>
+                
+                <div class="alert alert-warning">
+                    <strong>Material Recovery:</strong> Please specify what happened to the materials used in this production.
+                </div>
+
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="radio" name="materialStatus" id="allWasted" value="wasted" checked>
+                    <label class="form-check-label" for="allWasted">
+                        <strong>All materials were wasted/consumed</strong>
+                        <br><small class="text-muted">Nothing can be returned to inventory</small>
+                    </label>
+                </div>
+                
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="radio" name="materialStatus" id="someReturnable" value="returnable">
+                    <label class="form-check-label" for="someReturnable">
+                        <strong>Some materials can be returned to inventory</strong>
+                        <br><small class="text-muted">Show form to specify returnable quantities</small>
+                    </label>
+                </div>
+
+                <div class="mb-3">
+                    <label for="cancellationReason" class="form-label">Reason for cancellation <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="cancellationReason" rows="3" placeholder="Please explain why this production is being cancelled..." required></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Keep Production
+                </button>
+                <button type="button" class="btn btn-danger" id="proceedCancelBtn">
+                    Cancel Production
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Material Return Form Modal -->
+<div class="modal fade" id="materialReturnModal" tabindex="-1" aria-labelledby="materialReturnModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="materialReturnModalLabel">
+                    Return Materials to Inventory
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    Specify how much of each material can be returned to inventory. Leave as 0 if the material was completely used or wasted.
+                </div>
+
+                <div id="materialReturnForm">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Material</th>
+                                    <th>Used in Production</th>
+                                    <th>Return to Inventory</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody id="materialReturnTableBody">
+                                <!-- Materials will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <label for="returnNotes" class="form-label">Additional Notes</label>
+                    <textarea class="form-control" id="returnNotes" rows="2" placeholder="Any additional information about the returned materials..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Back
+                </button>
+                <button type="button" class="btn btn-success" id="confirmMaterialReturnBtn">
+                    Confirm & Cancel Production
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmationModal" tabindex="-1" aria-labelledby="deleteConfirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteConfirmationModalLabel">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <span id="deleteProductionNumber"></span>?</p>
+                <p class="text-danger"><strong>Warning:</strong> This action cannot be undone and will delete all production data associated with this production.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete Production</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Utility function to get CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Utility function to show alerts in modal
+function showModalAlert(type, message) {
+    const alertHtml = `
+        <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    `;
+    const modalBody = document.getElementById('productionDetailsModalBody');
+    if (modalBody) {
+        modalBody.insertAdjacentHTML('afterbegin', alertHtml);
+    }
+}
+
+// Global variable to store current cancellation production data
+let currentCancelProduction = null;
+
+// Production action functions
+function completeProduction(productionId) {
+    const button = document.getElementById('completeProductionBtn');
+    if (!button) {
+        return;
+    }
+    
+    const originalText = button.innerHTML;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Completing...';
+    button.disabled = true;
+    
+    fetch(`/inventory/ajax/production/${productionId}/complete/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showModalAlert('success', data.message);
+            setTimeout(() => {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('productionDetailsModal'));
+                if (modal) modal.hide();
+                location.reload();
+            }, 2000);
+        } else {
+            showModalAlert('danger', data.message);
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }
+    })
+    .catch(error => {
+        showModalAlert('danger', 'Error completing production. Please try again.');
+        button.innerHTML = originalText;
+        button.disabled = false;
+    });
+}
+
+function cancelProduction(productionId) {
+    // First, get production details to show in confirmation modal
+    fetch(`/inventory/ajax/production/${productionId}/details/`)
+        .then(response => response.json())
+        .then(data => {
+            // Store production data for later use
+            currentCancelProduction = {
+                id: productionId,
+                data: data
+            };
+            
+            // Extract production number from the HTML or use ID as fallback
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = data.html;
+            const productionNumberElement = tempDiv.querySelector('h5');
+            const productionNumber = productionNumberElement ? 
+                productionNumberElement.textContent.replace('Production Details - ', '') : 
+                `PROD${productionId.toString().padStart(6, '0')}`;
+            
+            // Set production number in modal
+            document.getElementById('cancelProductionNumber').textContent = productionNumber;
+            
+            // Reset form
+            document.getElementById('allWasted').checked = true;
+            document.getElementById('cancellationReason').value = '';
+            
+            // Show cancel confirmation modal
+            const modal = new bootstrap.Modal(document.getElementById('cancelProductionModal'));
+            modal.show();
+        })
+        .catch(error => {
+            alert('Error loading production details. Please try again.');
+        });
+}
+
+function loadMaterialReturnForm(productionId) {
+    // Get production materials for the return form
+    fetch(`/inventory/ajax/production/${productionId}/materials/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const tableBody = document.getElementById('materialReturnTableBody');
+                tableBody.innerHTML = '';
+                
+                if (data.materials && data.materials.length > 0) {
+                    data.materials.forEach((material, index) => {
+                        const row = `
+                            <tr>
+                                <td>
+                                    <strong>${material.name}</strong>
+                                    ${material.brand ? `<br><small class="text-muted">${material.brand}</small>` : ''}
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">${material.quantity_used} ${material.unit}</span>
+                                </td>
+                                <td>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" 
+                                               class="form-control material-return-qty" 
+                                               data-material-id="${material.id}"
+                                               data-material-unit="${material.unit}"
+                                               min="0" 
+                                               max="${material.quantity_used}" 
+                                               step="0.01" 
+                                               value="0">
+                                        <span class="input-group-text">${material.unit}</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <input type="text" 
+                                           class="form-control form-control-sm material-return-note" 
+                                           data-material-id="${material.id}"
+                                           placeholder="Condition notes...">
+                                </td>
+                            </tr>
+                        `;
+                        tableBody.innerHTML += row;
+                    });
+                } else {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-3">
+                                <i class="fas fa-info-circle me-2"></i>
+                                No materials found for this production.
+                            </td>
+                        </tr>
+                    `;
+                }
+                
+                // Show material return modal
+                const cancelModal = bootstrap.Modal.getInstance(document.getElementById('cancelProductionModal'));
+                if (cancelModal) cancelModal.hide();
+                
+                const returnModal = new bootstrap.Modal(document.getElementById('materialReturnModal'));
+                returnModal.show();
+            } else {
+                alert('Error loading production materials. Please try again.');
+            }
+        })
+        .catch(error => {
+            alert('Error loading production materials. Please try again.');
+        });
+}
+
+function executeCancelProduction(productionId, materialReturns = [], reason = '', notes = '') {
+    const button = document.getElementById('proceedCancelBtn') || document.getElementById('confirmMaterialReturnBtn');
+    if (!button) return;
+    
+    const originalText = button.innerHTML;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Cancelling...';
+    button.disabled = true;
+    
+    const requestData = {
+        unused_materials: materialReturns,
+        cancellation_reason: reason,
+        return_notes: notes
+    };
+    
+    fetch(`/inventory/ajax/production/${productionId}/cancel/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Hide all modals
+            const activeModals = ['cancelProductionModal', 'materialReturnModal', 'productionDetailsModal'];
+            activeModals.forEach(modalId => {
+                const modal = bootstrap.Modal.getInstance(document.getElementById(modalId));
+                if (modal) modal.hide();
+            });
+            
+            // Show success message and force refresh
+            alert('Production cancelled successfully! The page will reload to show updated movements.');
+            
+            // Force a complete page refresh with cache bust
+            window.location.href = window.location.href + '?t=' + new Date().getTime();
+        } else {
+            alert(data.message || 'Error cancelling production. Please try again.');
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }
+    })
+    .catch(error => {
+        alert('Error cancelling production. Please try again.');
+        button.innerHTML = originalText;
+        button.disabled = false;
+    });
+}
+
+// Function to attach event listeners to modal buttons after content loads
+function attachModalEventListeners() {
+    const completeBtn = document.getElementById('completeProductionBtn');
+    if (completeBtn) {
+        completeBtn.addEventListener('click', function() {
+            const productionId = this.getAttribute('data-production-id');
+            completeProduction(productionId);
+        });
+    }
+    
+    const cancelBtn = document.getElementById('cancelProductionBtn');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function() {
+            const productionId = this.getAttribute('data-production-id');
+            cancelProduction(productionId);
+        });
+    }
+}
+
+// Status filter functionality
+document.getElementById('statusFilter').addEventListener('change', function() {
+    const selectedStatus = this.value;
+    const rows = document.querySelectorAll('tbody tr[data-status]');
+    
+    rows.forEach(row => {
+        const rowStatus = row.getAttribute('data-status');
+        if (!selectedStatus || rowStatus === selectedStatus) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+});
+
+// View details functionality
+document.querySelectorAll('.view-details-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const prodId = this.getAttribute('data-id');
+        
+        // Show loading in modal
+        document.getElementById('productionDetailsModalBody').innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Loading production details...</p>
+            </div>
+        `;
+        
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('productionDetailsModal'));
+        modal.show();
+        
+        // Load details via AJAX
+        fetch(`/inventory/ajax/production/${prodId}/details/`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to load production details');
+                }
+                return response.json();
+            })
+            .then(data => {
+                document.getElementById('productionDetailsModalBody').innerHTML = data.html;
+                
+                // IMPORTANT: Attach event listeners after content is loaded
+                setTimeout(attachModalEventListeners, 100);
+            })
+            .catch(error => {
+                document.getElementById('productionDetailsModalBody').innerHTML = `
+                    <div class="alert alert-danger">
+                        Failed to load production details. Please try again.
+                    </div>
+                `;
+            });
+    });
+});
+
+// Delete confirmation functionality
+let deleteProductionId = null;
+
+document.querySelectorAll('.delete-production-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        deleteProductionId = this.getAttribute('data-id');
+        const productionNumber = this.getAttribute('data-number');
+        
+        // Set the production number in the modal with "Production" prefix
+        document.getElementById('deleteProductionNumber').textContent = `Production ${productionNumber}`;
+        
+        // Show the confirmation modal
+        const modal = new bootstrap.Modal(document.getElementById('deleteConfirmationModal'));
+        modal.show();
+    });
+});
+
+// Handle the confirm delete button
+document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+    if (deleteProductionId) {
+        // Add loading state
+        this.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>Deleting...';
+        this.disabled = true;
+        
+        // Send DELETE request via AJAX
+        fetch(`/inventory/productions/${deleteProductionId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({})
+        })
+        .then(response => {
+            if (response.ok) {
+                // Hide modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('deleteConfirmationModal'));
+                modal.hide();
+                
+                // Remove the row from the table
+                const row = document.querySelector(`tr[data-production-id="${deleteProductionId}"]`);
+                if (row) {
+                    row.remove();
+                }
+                
+                // Reload page to refresh the list
+                setTimeout(() => {
+                    window.location.reload();
+                }, 500);
+            } else {
+                throw new Error('Failed to delete production');
+            }
+        })
+        .catch(error => {
+            alert('Error deleting production. Please try again.');
+            
+            // Reset button state
+            this.innerHTML = 'Delete Production';
+            this.disabled = false;
+        });
+    }
+});
+
+// Cancel Production Modal Event Listeners
+document.getElementById('proceedCancelBtn').addEventListener('click', function() {
+    const reason = document.getElementById('cancellationReason').value.trim();
+    
+    if (!reason) {
+        alert('Please provide a reason for cancellation.');
+        document.getElementById('cancellationReason').focus();
+        return;
+    }
+    
+    const materialStatus = document.querySelector('input[name="materialStatus"]:checked').value;
+    
+    if (materialStatus === 'wasted') {
+        // All materials wasted - proceed with cancellation
+        executeCancelProduction(currentCancelProduction.id, [], reason, '');
+    } else {
+        // Some materials returnable - show material return form
+        loadMaterialReturnForm(currentCancelProduction.id);
+    }
+});
+
+// Material Return Modal Event Listeners
+document.getElementById('confirmMaterialReturnBtn').addEventListener('click', function() {
+    const materialReturns = [];
+    const reason = document.getElementById('cancellationReason').value.trim();
+    const returnNotes = document.getElementById('returnNotes').value.trim();
+    
+    // Collect material return data
+    document.querySelectorAll('.material-return-qty').forEach(input => {
+        const materialId = input.getAttribute('data-material-id');
+        const materialUnit = input.getAttribute('data-material-unit');
+        const quantity = parseFloat(input.value) || 0;
+        const noteInput = document.querySelector(`.material-return-note[data-material-id="${materialId}"]`);
+        const note = noteInput ? noteInput.value.trim() : '';
+        
+        if (quantity > 0) {
+            materialReturns.push({
+                material_id: materialId,
+                quantity_returned: quantity,
+                unit: materialUnit,
+                notes: note
+            });
+        }
+    });
+    
+    // Add validation and warning for better user experience
+    const totalMaterials = document.querySelectorAll('.material-return-qty').length;
+    
+    if (materialReturns.length === 0 && totalMaterials > 0) {
+        const confirmNoReturns = confirm(
+            '⚠️ Warning: No materials will be returned to inventory (all quantities are 0).\n\n' +
+            'This means all materials will be considered wasted.\n\n' +
+            'Are you sure you want to proceed?'
+        );
+        
+        if (!confirmNoReturns) {
+            return; // Don't proceed with cancellation
+        }
+    }
+    
+    // Execute cancellation with material returns
+    executeCancelProduction(currentCancelProduction.id, materialReturns, reason, returnNotes);
+});
+
+// Handle back button in material return modal
+document.querySelector('#materialReturnModal .btn-secondary').addEventListener('click', function() {
+    // Hide material return modal and show cancel confirmation modal again
+    const returnModal = bootstrap.Modal.getInstance(document.getElementById('materialReturnModal'));
+    if (returnModal) returnModal.hide();
+    
+    setTimeout(() => {
+        const cancelModal = new bootstrap.Modal(document.getElementById('cancelProductionModal'));
+        cancelModal.show();
+    }, 300);
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">{{ title }}</h2>
+    {% if form.errors %}
+        <div class="alert alert-danger">
+            {{ form.errors }}
+        </div>
+    {% endif %}
+    {% if formset.non_form_errors %}
+        <div class="alert alert-danger">
+            {{ formset.non_form_errors }}
+        </div>
+    {% endif %}
+    {% for f in formset.forms %}
+        {% if f.errors %}
+            <div class="alert alert-danger">
+                {{ f.errors }}
+            </div>
+        {% endif %}
+    {% endfor %}
+    <form method="post" id="stockin-form">
+        {% csrf_token %}
+        {{ formset.management_form }}
+        <input type="hidden" name="stockin_details_json" id="stockin-details-json">
+        <div class="card mb-4 shadow-sm">
+            <div class="card-body">
+                <h4 class="card-title mb-3">Stock In Information</h4>
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label for="{{ form.employee.id_for_label }}" class="form-label">Employee</label>
+                        {{ form.employee|add_class:'form-select form-select-sm' }}
+                    </div>
+                    <div class="col-md-4">
+                        <label for="{{ form.reference_number.id_for_label }}" class="form-label">Reference Number</label>
+                        {{ form.reference_number|add_class:'form-control form-control-sm' }}
+                    </div>
+                    <div class="col-md-4">
+                        <label for="{{ form.payment_method.id_for_label }}" class="form-label">Payment Method</label>
+                        {{ form.payment_method|add_class:'form-select form-select-sm' }}
+                    </div>
+                </div>
+                <div class="row g-3 mt-2">
+                    <div class="col-12">
+                        <label for="{{ form.notes.id_for_label }}" class="form-label">Notes</label>
+                        {{ form.notes|add_class:'form-control form-control-sm' }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card mb-4 shadow-sm">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle mb-0" id="formset-table">
+                        <thead class="table-light">
+                            <tr class="align-middle text-center">
+                                <th style="width: 25%;">Material</th>
+                                <th style="width: 12%;">Unit</th>
+                                <th style="width: 12%;">Quantity</th>
+                                <th style="width: 12%;">Unit Price</th>
+                                <th style="width: 12%;">Expiry Date</th>
+                                <th style="width: 12%;">Total</th>
+                                <th style="width: 12%;">Total Stock</th>
+                                <th style="width: 3%;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- No initial row -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-auto">
+                        <button type="button" class="btn btn-success px-4" id="add-form">Add Item</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="d-flex justify-content-end gap-2 mt-4">
+            <button type="submit" class="btn btn-primary px-4">Save</button>
+            <a href="{% url 'inventory:stockin_list' %}" class="btn btn-outline-secondary px-4">Cancel</a>
+        </div>
+    </form>
+</div>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    // Pass material options to JS for use in the external script
+    window.materialOptions = `{% for material in materials %}<option value="{{ material.pk }}" data-unit="{{ material.unit }}" data-unitcost="{{ material.unit_cost }}" data-baseunit="{{ material.base_unit }}" data-unitconversionfactor="{{ material.unit_conversion_factor }}">{{ material.name }}{% if material.brand %} - {{ material.brand }}{% endif %}</option>{% endfor %}`;
+</script>
+<script src="{% static 'js/stockin_form.js' %}"></script>
+
+<!-- Add New Material Modal -->
+<div class="modal fade" id="addMaterialModal" tabindex="-1" aria-labelledby="addMaterialModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="addMaterialModalLabel">Add New Material</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="add-material-form">
+          <div class="mb-2">
+            <label for="material-name" class="form-label">Name</label>
+            <input type="text" class="form-control" id="material-name" name="name" required>
+          </div>
+          <div class="mb-2">
+            <label for="material-brand" class="form-label">Brand</label>
+            <input type="text" class="form-control" id="material-brand" name="brand">
+          </div>
+          <div class="mb-2">
+            <label for="material-description" class="form-label">Description</label>
+            <textarea class="form-control" id="material-description" name="description" rows="2"></textarea>
+          </div>
+          <div class="mb-2">
+            <label for="material-category" class="form-label">Category</label>
+            <select class="form-select" id="material-category" name="category" required>
+              <option value="">---------</option>
+              {% for value, label in formset.empty_form.fields.material.queryset.model.CATEGORY_CHOICES %}
+                <option value="{{ value }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-2">
+            <label for="material-unit" class="form-label">Unit</label>
+            <input type="text" class="form-control" id="material-unit" name="unit" required>
+          </div>
+          <div class="mb-2">
+            <label for="material-minimum-stock" class="form-label">Minimum Stock</label>
+            <input type="number" class="form-control" id="material-minimum-stock" name="minimum_stock" min="0" step="0.01" value="0">
+          </div>
+          <div class="mb-2">
+            <label for="material-unit-cost" class="form-label">Unit Cost</label>
+            <input type="number" class="form-control" id="material-unit-cost" name="unit_cost" min="0" step="0.01" required>
+          </div>
+          <div class="text-end">
+            <button type="submit" class="btn btn-success">Add Material</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if details_json %}
+<script>
+    window.stockInDetails = JSON.parse('{{ details_json|escapejs }}');
+</script>
+{% else %}
+<script>
+    window.stockInDetails = [];
+</script>
+{% endif %}
+
+{% endblock %} 

@@ -1,0 +1,191 @@
+<!-- Production Header Info -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <label class="form-label text-muted small">Production Number</label>
+        <div class="fw-bold">{{ production.production_number }}</div>
+    </div>
+    <div class="col-md-6">
+        <label class="form-label text-muted small">Status</label>
+        <div>
+            <span class="badge 
+                {% if production.status == 'completed' %}bg-success
+                {% elif production.status == 'in_progress' %}bg-warning text-dark
+                {% elif production.status == 'cancelled' %}bg-danger
+                {% elif production.status == 'materials_insufficient' %}bg-warning text-dark
+                {% elif production.status == 'checking_materials' %}bg-info
+                {% else %}bg-secondary{% endif %}">
+                {{ production.get_status_display }}
+            </span>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <label class="form-label text-muted small">Employee</label>
+        <div>{{ production.employee|default:"Not assigned" }}</div>
+    </div>
+    <div class="col-md-4">
+        <label class="form-label text-muted small">Date Started</label>
+        <div>{% if production.date_started %}{{ production.date_started|date:'M d, Y' }}{% else %}Not started{% endif %}</div>
+    </div>
+    <div class="col-md-4">
+        <label class="form-label text-muted small">Date Finished</label>
+        <div>{% if production.date_finished %}{{ production.date_finished|date:'M d, Y' }}{% else %}Not finished{% endif %}</div>
+    </div>
+</div>
+
+<!-- Products Section -->
+<div class="mb-4">
+    <h6 class="border-bottom pb-2">Products</h6>
+    {% if production.batch_products.exists %}
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead class="table-light">
+                    <tr>
+                        <th>Product</th>
+                        <th>Category</th>
+                        <th>Quantity</th>
+                        <th>Unit</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for batch_product in production.batch_products.all %}
+                    <tr>
+                        <td><strong>{{ batch_product.product.name }}</strong></td>
+                        <td>{{ batch_product.product.get_category_display }}</td>
+                        <td>{{ batch_product.quantity }}</td>
+                        <td>{{ batch_product.unit }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="text-muted">No products defined for this production.</div>
+    {% endif %}
+</div>
+
+<!-- Finished Goods Section -->
+{% if finished_goods %}
+<div class="mb-4">
+    <h6 class="border-bottom pb-2">Finished Goods Produced</h6>
+    <div class="table-responsive">
+        <table class="table table-sm">
+            <thead class="table-light">
+                <tr>
+                    <th>Batch Number</th>
+                    <th>Product</th>
+                    <th>Quantity</th>
+                    <th>Production Date</th>
+                    <th>Expiry Date</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fg in finished_goods %}
+                <tr>
+                    <td><code>{{ fg.batch_number }}</code></td>
+                    <td>{{ fg.product.name }}</td>
+                    <td>{{ fg.quantity }} {{ fg.unit }}</td>
+                    <td>{{ fg.production_date|date:'M d, Y' }}</td>
+                    <td>{{ fg.expiry_date|date:'M d, Y' }}</td>
+                    <td>
+                        <span class="badge 
+                            {% if fg.status == 'available' %}bg-success
+                            {% elif fg.status == 'expired' %}bg-danger
+                            {% else %}bg-secondary{% endif %}">
+                            {{ fg.get_status_display }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Unused Material Returns (for cancelled productions) -->
+{% if unused_returns %}
+<div class="mb-4">
+    <h6 class="border-bottom pb-2">Unused Material Returns</h6>
+    <div class="table-responsive">
+        <table class="table table-sm">
+            <thead class="table-light">
+                <tr>
+                    <th>Material</th>
+                    <th>Returned Quantity</th>
+                    <th>Unit</th>
+                    <th>Reason</th>
+                    <th>Returned By</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for return in unused_returns %}
+                <tr>
+                    <td>
+                        <strong>{{ return.raw_material.name }}</strong>
+                        {% if return.raw_material.brand %}
+                            <br><small class="text-muted">{{ return.raw_material.brand }}</small>
+                        {% endif %}
+                    </td>
+                    <td>{{ return.returned_quantity }}</td>
+                    <td>{{ return.raw_material.base_unit }}</td>
+                    <td>{{ return.return_reason }}</td>
+                    <td>{{ return.employee }}</td>
+                    <td>{{ return.created_at|date:'M d, Y g:i A' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Notes -->
+{% if production.notes %}
+<div class="mb-4">
+    <h6 class="border-bottom pb-2">Notes</h6>
+    <div class="p-3 bg-light rounded">
+        {{ production.notes|linebreaks }}
+    </div>
+</div>
+{% endif %}
+
+<!-- Wastage Notes (for cancelled productions) -->
+{% if production.wastage_notes %}
+<div class="mb-4">
+    <h6 class="border-bottom pb-2">Cancellation Notes</h6>
+    <div class="p-3 bg-light rounded">
+        {{ production.wastage_notes|linebreaks }}
+    </div>
+</div>
+{% endif %}
+
+<!-- Action Buttons -->
+<div class="mt-4 pt-3 border-top">
+    <div class="row">
+        <div class="col-12">
+            {% if production.status == 'in_progress' %}
+                <button type="button" class="btn btn-success" 
+                        id="completeProductionBtn" 
+                        data-production-id="{{ production.pk }}">
+                    Complete Production
+                </button>
+                <button type="button" class="btn btn-danger" 
+                        id="cancelProductionBtn"
+                        data-production-id="{{ production.pk }}">
+                    Cancel Production
+                </button>
+            {% endif %}
+            
+            {% if production.can_edit %}
+                <a href="{% url 'inventory:production_edit' production.pk %}" class="btn btn-secondary">
+                    Edit Production
+                </a>
+            {% endif %}
+        </div>
+    </div>
+</div> 

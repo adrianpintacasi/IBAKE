@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block title %}Delete Employee - iBAKE Cakes & Pastries{% endblock %}
+{% block content %}
+<h2>Delete Employee</h2>
+<p>Are you sure you want to delete employee <strong>{{ object.full_name }}</strong>?</p>
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">Yes, delete</button>
+    <a href="{% url 'employee:employee_list' %}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %} 

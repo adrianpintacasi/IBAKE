@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+
+{% block title %}Journal Entries - iBAKE Cakes & Pastries{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0" style="color: #2C3E50;">Journal Entries</h2>
+                <div>
+                    <a href="{% url 'accounting:journal_entry_export_csv' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" 
+                       class="btn btn-outline-success me-2">
+                        <i class="fas fa-download"></i> Export CSV
+                    </a>
+                    <a href="{% url 'accounting:journal_entry_create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Add Manual Entry
+                    </a>
+                </div>
+            </div>
+
+            <!-- Filter Section -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="{{ filter_form.search.id_for_label }}" class="form-label">Search</label>
+                            {{ filter_form.search }}
+                        </div>
+                        <div class="col-md-3">
+                            <label for="{{ filter_form.reference_type.id_for_label }}" class="form-label">Reference Type</label>
+                            {{ filter_form.reference_type }}
+                        </div>
+                        <div class="col-md-2">
+                            <label for="{{ filter_form.date_from.id_for_label }}" class="form-label">Date From</label>
+                            {{ filter_form.date_from }}
+                        </div>
+                        <div class="col-md-2">
+                            <label for="{{ filter_form.date_to.id_for_label }}" class="form-label">Date To</label>
+                            {{ filter_form.date_to }}
+                        </div>
+                        <div class="col-md-1">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary">Filter</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Journal Entries Table -->
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead style="background-color: #4ECDC4; color: white;">
+                                <tr>
+                                    <th>Entry Number</th>
+                                    <th>Date</th>
+                                    <th>Description</th>
+                                    <th>Reference Type</th>
+                                    <th class="text-end">Amount</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for journal_entry in journal_entries %}
+                                <tr style="color: #667eea;">
+                                    <td><strong>{{ journal_entry.entry_number }}</strong></td>
+                                    <td>{{ journal_entry.date|date:"M d, Y" }}</td>
+                                    <td>{{ journal_entry.description|truncatechars:60 }}</td>
+                                    <td>
+                                        {% if journal_entry.reference_type %}
+                                            <span class="badge bg-info">{{ journal_entry.reference_type|title }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Manual</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <strong>₱{{ journal_entry.get_total_debits|floatformat:2 }}</strong>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'accounting:journal_entry_detail' journal_entry.pk %}" 
+                                           class="btn btn-sm btn-outline-info">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">
+                                        {% if request.GET %}
+                                            No journal entries found matching your search criteria.
+                                            <br><a href="{% url 'accounting:journal_entry_list' %}" class="btn btn-sm btn-outline-primary mt-2">Clear filters</a>
+                                        {% else %}
+                                            No journal entries found.
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if is_paginated %}
+                    <nav aria-label="Journal entries pagination" class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page=1">First</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}">Previous</a>
+                                </li>
+                            {% endif %}
+
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                                </span>
+                            </li>
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.next_page_number }}">Next</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}page={{ page_obj.paginator.num_pages }}">Last</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-expand filter if any filters are applied
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasFilters = Array.from(urlParams.keys()).some(key => key !== 'page' && urlParams.get(key));
+    
+    if (hasFilters) {
+        const filterCollapse = new bootstrap.Collapse(document.getElementById('filterCollapse'), {
+            show: true
+        });
+    }
+});
+</script>
+{% endblock %} 

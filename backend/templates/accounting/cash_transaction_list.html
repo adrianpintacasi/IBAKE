@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+
+{% block title %}Cash Transactions - iBAKE Cakes & Pastries{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Cash Transactions</h1>
+        <a href="{% url 'accounting:cash_transaction_create' %}" class="btn btn-primary">
+            Add Cash Transaction
+        </a>
+    </div>
+
+    <!-- Search and Filter Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h6 class="mb-0">Search & Filter</h6>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label for="search" class="form-label">Search Description</label>
+                    <input type="text" class="form-control" id="search" name="search" 
+                           placeholder="Search by description..." value="{{ request.GET.search }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="transaction_type" class="form-label">Transaction Type</label>
+                    <select class="form-select" id="transaction_type" name="transaction_type">
+                        <option value="">All Types</option>
+                        <option value="OWNER_INVESTMENT" {% if request.GET.transaction_type == 'OWNER_INVESTMENT' %}selected{% endif %}>Owner Investment</option>
+                        <option value="OWNER_WITHDRAWAL" {% if request.GET.transaction_type == 'OWNER_WITHDRAWAL' %}selected{% endif %}>Owner Withdrawal</option>
+                        <option value="EQUIPMENT_PURCHASE" {% if request.GET.transaction_type == 'EQUIPMENT_PURCHASE' %}selected{% endif %}>Equipment Purchase</option>
+                        <option value="LOAN_RECEIVED" {% if request.GET.transaction_type == 'LOAN_RECEIVED' %}selected{% endif %}>Loan Received</option>
+                        <option value="LOAN_PAYMENT" {% if request.GET.transaction_type == 'LOAN_PAYMENT' %}selected{% endif %}>Loan Payment</option>
+                        <option value="OTHER_INCOME" {% if request.GET.transaction_type == 'OTHER_INCOME' %}selected{% endif %}>Other Income</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="payment_method" class="form-label">Payment Method</label>
+                    <select class="form-select" id="payment_method" name="payment_method">
+                        <option value="">All Methods</option>
+                        <option value="CASH" {% if request.GET.payment_method == 'CASH' %}selected{% endif %}>Cash</option>
+                        <option value="BANK_TRANSFER" {% if request.GET.payment_method == 'BANK_TRANSFER' %}selected{% endif %}>Bank Transfer</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">&nbsp;</label>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Apply Filter</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th>Amount</th>
+                            <th>Transaction Date</th>
+                            <th>Payment Method</th>
+                            <th>Journal Entry</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transaction in transactions %}
+                        <tr>
+                            <td>
+                                <span class="badge 
+                                    {% if transaction.transaction_type == 'OWNER_INVESTMENT' %}bg-success
+                                    {% elif transaction.transaction_type == 'OWNER_WITHDRAWAL' %}bg-danger
+                                    {% elif transaction.transaction_type == 'EQUIPMENT_PURCHASE' %}bg-info
+                                    {% elif transaction.transaction_type == 'LOAN_RECEIVED' %}bg-primary
+                                    {% elif transaction.transaction_type == 'LOAN_PAYMENT' %}bg-warning text-dark
+                                    {% elif transaction.transaction_type == 'OTHER_INCOME' %}bg-success
+                                    {% else %}bg-secondary
+                                    {% endif %}">
+                                    {{ transaction.get_transaction_type_display }}
+                                </span>
+                            </td>
+                            <td>{{ transaction.description }}</td>
+                            <td>
+                                <strong class="
+                                    {% if transaction.transaction_type in 'OWNER_INVESTMENT,LOAN_RECEIVED,OTHER_INCOME' %}text-success
+                                    {% else %}text-danger
+                                    {% endif %}">
+                                    {% if transaction.transaction_type in 'OWNER_INVESTMENT,LOAN_RECEIVED,OTHER_INCOME' %}+{% else %}-{% endif %}₱{{ transaction.amount|floatformat:2 }}
+                                </strong>
+                            </td>
+                            <td>{{ transaction.transaction_date|date:"M d, Y" }}</td>
+                            <td>
+                                <span class="badge 
+                                    {% if transaction.payment_method == 'CASH' %}bg-success
+                                    {% else %}bg-info
+                                    {% endif %}">
+                                    {{ transaction.get_payment_method_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if transaction.journal_entry %}
+                                    <a href="{% url 'accounting:journal_entry_detail' transaction.journal_entry.pk %}" 
+                                       class="text-decoration-none">
+                                        JE-{{ transaction.journal_entry.entry_number }}
+                                    </a>
+                                {% else %}
+                                    <span class="text-muted">No journal entry</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <!-- Option 1: Modal Button -->
+                                <button type="button" class="btn btn-sm btn-outline-info me-1" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#transactionModal{{ transaction.id }}">
+                                    Quick View
+                                </button>
+                                
+                                <!-- Option 2: Detail Page Link -->
+                                <a href="{% url 'accounting:cash_transaction_detail' transaction.pk %}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    Details
+                                </a>
+                            </td>
+                        </tr>
+
+                        <!-- Transaction Detail Modal -->
+                        <div class="modal fade" id="transactionModal{{ transaction.id }}" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">{{ transaction.get_transaction_type_display }} Details</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <dl class="row">
+                                            <dt class="col-sm-4">Type:</dt>
+                                            <dd class="col-sm-8">{{ transaction.get_transaction_type_display }}</dd>
+                                            
+                                            <dt class="col-sm-4">Description:</dt>
+                                            <dd class="col-sm-8">{{ transaction.description }}</dd>
+                                            
+                                            <dt class="col-sm-4">Amount:</dt>
+                                            <dd class="col-sm-8">
+                                                <strong class="
+                                                    {% if transaction.transaction_type in 'OWNER_INVESTMENT,LOAN_RECEIVED,OTHER_INCOME' %}text-success
+                                                    {% else %}text-danger
+                                                    {% endif %}">
+                                                    {% if transaction.transaction_type in 'OWNER_INVESTMENT,LOAN_RECEIVED,OTHER_INCOME' %}+{% else %}-{% endif %}₱{{ transaction.amount|floatformat:2 }}
+                                                </strong>
+                                            </dd>
+                                            
+                                            <dt class="col-sm-4">Transaction Date:</dt>
+                                            <dd class="col-sm-8">{{ transaction.transaction_date|date:"M d, Y" }}</dd>
+                                            
+                                            <dt class="col-sm-4">Payment Method:</dt>
+                                            <dd class="col-sm-8">{{ transaction.get_payment_method_display }}</dd>
+                                            
+                                            {% if transaction.notes %}
+                                            <dt class="col-sm-4">Notes:</dt>
+                                            <dd class="col-sm-8">{{ transaction.notes }}</dd>
+                                            {% endif %}
+                                        </dl>
+                                    </div>
+                                    <div class="modal-footer">
+                                        {% if transaction.journal_entry %}
+                                            <a href="{% url 'accounting:journal_entry_detail' transaction.journal_entry.pk %}" 
+                                               class="btn btn-outline-primary">View Journal Entry</a>
+                                        {% endif %}
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center">
+                                <p class="text-muted">No cash transactions found. <a href="{% url 'accounting:cash_transaction_create' %}">Create the first cash transaction</a>.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

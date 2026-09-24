@@ -1,0 +1,1071 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    .production-form .table th {
+        background-color: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+        font-weight: 600;
+    }
+    
+    .production-form .table td {
+        vertical-align: middle;
+    }
+    
+    .production-form .form-select,
+    .production-form .form-control {
+        border-radius: 0.375rem;
+    }
+    
+    .production-form .btn {
+        border-radius: 0.375rem;
+    }
+    
+    .production-form .card {
+        border-radius: 0.5rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+    
+    .material-status-available {
+        background-color: #d1e7dd;
+        border-color: #badbcc;
+    }
+    
+    .material-status-insufficient {
+        background-color: #f8d7da;
+        border-color: #f5c2c7;
+    }
+    
+    .production-title {
+        color: #495057;
+        font-weight: 600;
+    }
+    
+    .action-buttons {
+        white-space: nowrap;
+    }
+    
+    .action-buttons .btn {
+        min-width: 60px;
+        font-size: 0.8rem;
+    }
+    
+    /* Custom button colors to match design */
+    .btn-view {
+        background-color: #17a2b8 !important;
+        border-color: #17a2b8 !important;
+        color: white !important;
+    }
+    
+    .btn-view:hover {
+        background-color: #138496 !important;
+        border-color: #117a8b !important;
+    }
+    
+    .btn-edit {
+        background-color: #fd7e14 !important;
+        border-color: #fd7e14 !important;
+        color: white !important;
+    }
+    
+    .btn-edit:hover {
+        background-color: #e8690b !important;
+        border-color: #dc6108 !important;
+    }
+    
+    .btn-delete {
+        background-color: #dc3545 !important;
+        border-color: #dc3545 !important;
+        color: white !important;
+    }
+    
+    .btn-delete:hover {
+        background-color: #c82333 !important;
+        border-color: #bd2130 !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4 production-form">
+    <h2 class="mb-4 production-title">{% if form.instance.pk %}Edit Production{% else %}Add Production{% endif %}</h2>
+    
+    <!-- Production Form -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form method="post" id="productionForm" novalidate>
+                {% csrf_token %}
+                
+                <!-- Production Basic Info -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <label for="{{ form.employee.id_for_label }}" class="form-label">Employee</label>
+                        {{ form.employee }}
+                        {% if form.employee.errors %}
+                            <div class="text-danger small">{{ form.employee.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <label for="{{ form.notes.id_for_label }}" class="form-label">Notes</label>
+                        {{ form.notes }}
+                        {% if form.notes.errors %}
+                            <div class="text-danger small">{{ form.notes.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Products Section -->
+                <div id="productsSection" class="mb-3">
+                    <h5 class="mb-3">Products to Produce</h5>
+                    
+                    <!-- Add the missing management form -->
+                    {{ batch_formset.management_form }}
+                    
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="23%">Category</th>
+                                    <th width="32%">Product</th>
+                                    <th width="12%">Quantity</th>
+                                    <th width="13%">Unit</th>
+                                    <th width="20%">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="batch-products-table">
+                                {% for batch_form in batch_formset %}
+                                <tr class="batch-product-row">
+                                    <td>
+                                        <select class="form-select category-filter" data-row-index="{{ forloop.counter0 }}">
+                                            <option value="">All Categories</option>
+                                            <option value="cake">Cake</option>
+                                            <option value="pastry">Pastry</option>
+                                            <option value="dessert">Dessert</option>
+                                            <option value="snack">Snack</option>
+                                            <option value="coffee">Coffee</option>
+                                            <option value="non-coffee">Non-coffee</option>
+                                        </select>
+                                    </td>
+                                    <td>{{ batch_form.product }}</td>
+                                    <td>{{ batch_form.quantity }}</td>
+                                    <td>{{ batch_form.unit }}</td>
+                                    <td class="action-buttons">
+                                        {% if batch_form.instance.pk %}
+                                            {{ batch_form.id }}
+                                        {% endif %}
+                                        <div style="display: none;">{{ batch_form.DELETE }}</div>
+                                        <button type="button" class="btn btn-view btn-sm view-materials-btn me-1" disabled>
+                                            <i class="fas fa-list"></i> View
+                                        </button>
+                                        <button type="button" class="btn btn-delete btn-sm remove-batch-product">
+                                            Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <!-- Show at least one empty row if no products exist -->
+                                <tr class="batch-product-row" id="empty-row-template" style="display: none;">
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="d-flex justify-content-start align-items-center">
+                        <button type="button" id="addBatchProductBtn" class="btn btn-success">
+                            Add Product
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Hidden production form fields (not used in unified approach) -->
+                <div style="display: none;">
+                    {{ form.product }}
+                    {{ form.quantity_produced }}
+                    {{ form.unit }}
+                    {{ form.production_number }}
+                    {{ form.date_started }}
+                    {{ form.date_finished }}
+                    {{ form.wastage_notes }}
+                </div>
+
+                <!-- Material Status Indicator -->
+                <div class="mb-3">
+                    <div class="card" id="materialStatusCard" style="display: none;">
+                        <div class="card-body">
+                            <div id="materialStatusContent">
+                                <!-- Populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Display any non-field errors -->
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {{ form.non_field_errors }}
+                    </div>
+                {% endif %}
+
+                <!-- Display batch formset errors -->
+                {% if batch_formset.non_form_errors %}
+                    <div class="alert alert-danger">
+                        {{ batch_formset.non_form_errors }}
+                    </div>
+                {% endif %}
+
+                <!-- Production Actions -->
+                <div class="row">
+                    <div class="col-12">
+                        <button type="submit" name="confirm_production" value="1" class="btn btn-primary me-2">
+                            {% if form.instance.pk %}Update Production{% else %}Start Production{% endif %}
+                        </button>
+                        <a href="{% url 'inventory:production_list' %}" class="btn btn-outline-secondary">
+                            Cancel
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Hidden field for unused materials (populated by JavaScript) -->
+                <input type="hidden" name="unused_materials" id="unusedMaterialsInput">
+            </form>
+        </div>
+    </div>
+
+    <!-- Material Sufficiency Check Results -->
+    {% if form.instance.pk and form.instance.material_sufficiency_checked %}
+    <div class="card shadow-sm mt-3">
+        <div class="card-header">
+            <h5 class="mb-0">Material Sufficiency Check Results</h5>
+        </div>
+        <div class="card-body">
+            {% if form.instance.materials_sufficient %}
+                <div class="alert alert-success">
+                    <strong>All materials are available</strong> for this production.
+                </div>
+            {% else %}
+                <div class="alert alert-danger">
+                    <strong>Some materials are insufficient</strong> for this production.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Materials Modal -->
+<div class="modal fade" id="materialsModal" tabindex="-1" aria-labelledby="materialsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="materialsModalLabel">Required Materials</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="background-color: white;">
+                <div id="materialsTableContainer">
+                    <p class="text-muted text-center">Select products to view required materials.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Insufficient Materials Modal -->
+<div class="modal fade" id="insufficientMaterialsModal" tabindex="-1" aria-labelledby="insufficientMaterialsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="insufficientMaterialsModalLabel">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Insufficient Materials
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning" id="insufficient-materials-alert" style="display: none;">
+                    <strong>Insufficient Materials</strong>
+                    <div id="insufficient-materials-list"></div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Material</th>
+                                <th>Required</th>
+                                <th>Available</th>
+                                <th>Shortage</th>
+                                <th>Unit</th>
+                            </tr>
+                        </thead>
+                        <tbody id="insufficientMaterialsTable">
+                            <!-- Populated via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Unused Materials Modal for Cancellation -->
+<div class="modal fade" id="unusedMaterialsModal" tabindex="-1" aria-labelledby="unusedMaterialsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="unusedMaterialsModalLabel">Return Unused Materials</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Please specify what materials should be returned to inventory:</p>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Material</th>
+                                <th>Originally Used</th>
+                                <th>Return Quantity</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="unusedMaterialsTable">
+                            <!-- Populated via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="confirmCancelBtn" class="btn btn-danger">Confirm Cancellation</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden data for JavaScript -->
+<div id="production-data" 
+     data-production-id="{% if form.instance.pk %}{{ form.instance.pk }}{% else %}0{% endif %}"
+     style="display: none;"></div>
+
+<!-- Product data for JavaScript -->
+<script type="application/json" id="products-data">
+[
+    {% for product in products %}
+    {
+        "id": {{ product.id }},
+        "name": "{{ product.name|escapejs }}",
+        "category": "{{ product.category }}"
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+]
+</script>
+
+<script type="application/json" id="django-data">
+{
+    "productData": {% if product_data %}{{ product_data|safe }}{% else %}{}{% endif %},
+    "isEdit": {% if form.instance.pk %}true{% else %}false{% endif %},
+    "csrfToken": "{{ csrf_token }}"
+}
+</script>
+
+<script>
+// Load Django template variables from JSON
+const djangoData = JSON.parse(document.getElementById('django-data').textContent);
+const productData = djangoData.productData;
+const isEdit = djangoData.isEdit;
+const csrfToken = djangoData.csrfToken;
+
+// Global variables for material checking
+let materialsSufficient = false;
+let currentInsufficientMaterials = [];
+let materialCheckingTimeout;
+let productsData = JSON.parse(document.getElementById('products-data').textContent);
+
+console.log('Production form initialized:', {
+    productData: productData,
+    isEdit: isEdit,
+    productsData: productsData
+});
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing handlers...');
+    
+    // Use the Django-provided isEdit variable instead of manual detection
+    console.log('Edit mode detected:', isEdit);
+    
+    // Initialize batch product handlers
+    setupBatchProductHandlers();
+    
+    // Only do initial material check for NEW productions, not when editing
+    if (!isEdit) {
+        console.log('New production - performing initial material check');
+        setTimeout(checkProductsMaterials, 500);
+    } else {
+        console.log('Edit mode - skipping material check');
+        // For edit mode, assume materials are sufficient and enable buttons
+        materialsSufficient = true;
+        updateButtonStates();
+    }
+});
+
+function setupBatchProductHandlers() {
+    // Add initial empty row if no products exist
+    const table = document.getElementById('batch-products-table');
+    const existingRows = table.querySelectorAll('.batch-product-row:not(#empty-row-template)');
+    
+    console.log('Setting up batch product handlers, existing rows:', existingRows.length);
+    
+    if (existingRows.length === 0) {
+        // Add the first product row
+        addNewProductRow();
+    }
+    
+    // Add product row for mixed batch - ensure button exists and add handler
+    const addBtn = document.getElementById('addBatchProductBtn');
+    if (addBtn) {
+        // Remove any existing listeners to prevent duplicates
+        addBtn.removeEventListener('click', addNewProductRow);
+        addBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Add Product button clicked');
+            addNewProductRow();
+        });
+        console.log('Add Product button handler attached');
+    } else {
+        console.error('Add Product button not found!');
+    }
+    
+    // Attach handlers to existing rows
+    existingRows.forEach(row => {
+        attachBatchProductHandlers(row);
+        updateViewMaterialsButton(row);
+    });
+}
+
+// Material checking functionality
+function checkProductsMaterials() {
+    console.log('Checking products materials...');
+    
+    // Check if we're in edit mode - skip material checks for existing productions
+    if (isEdit) {
+        console.log('Edit mode detected - skipping material check');
+        materialsSufficient = true;
+        updateButtonStates();
+        return;
+    }
+    
+    // Get all products from the table
+    const products = [];
+    const rows = document.querySelectorAll('.batch-product-row:not(#empty-row-template)');
+    
+    rows.forEach(row => {
+        const productSelect = row.querySelector('select[name*="-product"]');
+        const quantityInput = row.querySelector('input[name*="-quantity"]');
+        
+        if (productSelect && quantityInput && productSelect.value && quantityInput.value) {
+            products.push({
+                product_id: productSelect.value,
+                quantity: parseFloat(quantityInput.value) || 0
+            });
+        }
+    });
+
+    console.log('Products for material check:', products);
+    
+    if (products.length === 0) {
+        // No products selected
+        materialsSufficient = false;
+        updateButtonStates();
+        return;
+    }
+    
+    // Show loading state
+    updateButtonStates(true);
+    
+    fetch('/inventory/ajax/check-batch-materials/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+            batch_products: products
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Material check response:', data);
+        materialsSufficient = data.sufficient;
+        currentInsufficientMaterials = data.materials || [];
+        
+        if (!data.sufficient) {
+            console.log('Materials insufficient for production');
+            showInsufficientMaterialsModal(data.materials, `Products: ${data.products.join(', ')}`);
+        } else {
+            console.log('Materials sufficient for production');
+            hideInsufficientMaterialsModal();
+        }
+        
+        updateButtonStates();
+    })
+    .catch(error => {
+        console.error('Error checking materials:', error);
+        materialsSufficient = false;
+        updateButtonStates();
+    });
+}
+
+function showInsufficientMaterialsModal(materials = currentInsufficientMaterials, productName = '') {
+    if (!materials || materials.length === 0) return;
+    
+    const table = document.getElementById('insufficientMaterialsTable');
+    let html = ''; // Declare html variable
+    
+    materials.forEach(material => {
+        const availableClass = material.available >= material.required ? 'text-success' : 'text-danger';
+        const brandInfo = material.brand ? `<br><small class="text-muted">${material.brand}</small>` : '';
+        
+        html += `
+            <tr>
+                <td>
+                    <strong>${material.material_name}</strong>
+                    ${brandInfo}
+                </td>
+                <td>${material.required} ${material.unit}</td>
+                <td class="${availableClass}">${material.available} ${material.unit}</td>
+                <td class="text-danger"><strong>${material.shortage} ${material.unit}</strong></td>
+                <td>${material.unit}</td>
+            </tr>
+        `;
+    });
+    
+    table.innerHTML = html; // Set the table content
+    
+    const modal = new bootstrap.Modal(document.getElementById('insufficientMaterialsModal'));
+    modal.show();
+}
+
+function hideInsufficientMaterialsModal() {
+    const modal = bootstrap.Modal.getInstance(document.getElementById('insufficientMaterialsModal'));
+    if (modal) {
+        modal.hide();
+    }
+}
+
+function updateButtonStates(loading = false) {
+    const buttons = document.querySelectorAll('button[type="submit"]');
+    const statusCard = document.getElementById('materialStatusCard');
+    const statusContent = document.getElementById('materialStatusContent');
+    
+    buttons.forEach(button => {
+        if (loading) {
+            button.disabled = true;
+            const originalText = button.innerHTML;
+            button.innerHTML = button.innerHTML.replace(/Checking\.\.\./g, '').trim() + ' Checking...';
+        } else if (!materialsSufficient) {
+            button.disabled = true;
+            // Add visual indication
+            button.classList.add('btn-outline-secondary');
+            button.classList.remove('btn-secondary', 'btn-info', 'btn-success', 'btn-primary');
+            // Reset text
+            if (button.innerHTML.includes('Checking...')) {
+                button.innerHTML = button.innerHTML.replace(/\s*Checking\.\.\./g, '');
+            }
+        } else {
+            button.disabled = false;
+            // Restore original button classes
+            button.classList.remove('btn-outline-secondary');
+            if (button.name === 'confirm_production') {
+                button.classList.add('btn-primary');
+            } else if (button.name === 'start_production') {
+                button.classList.add('btn-success');
+            } else if (button.name === 'complete_production') {
+                button.classList.add('btn-primary');
+            }
+            // Reset text
+            if (button.innerHTML.includes('Checking...')) {
+                button.innerHTML = button.innerHTML.replace(/\s*Checking\.\.\./g, '');
+            }
+        }
+    });
+    
+    // Update status card
+    if (loading) {
+        if (statusCard) {
+            statusCard.style.display = 'block';
+            statusContent.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <div class="spinner-border spinner-border-sm text-info me-2" role="status"></div>
+                    <span class="text-info">Checking material availability...</span>
+                </div>
+            `;
+        }
+    } else if (!materialsSufficient && currentInsufficientMaterials.length > 0) {
+        if (statusCard) {
+            statusCard.style.display = 'block';
+            statusCard.className = 'card border-danger material-status-insufficient';
+            statusContent.innerHTML = `
+                <div class="text-danger">
+                    <strong>Materials Insufficient:</strong> ${currentInsufficientMaterials.length} material(s) need restocking.
+                    <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="showInsufficientMaterialsModal()">
+                        View Details
+                    </button>
+                </div>
+            `;
+        }
+    } else if (materialsSufficient) {
+        if (statusCard) {
+            statusCard.style.display = 'block';
+            statusCard.className = 'card border-success material-status-available';
+            statusContent.innerHTML = `
+                <div class="text-success">
+                    <strong>All materials are available</strong> - Ready to proceed with production.
+                </div>
+            `;
+        }
+    } else {
+        if (statusCard) {
+            statusCard.style.display = 'none';
+        }
+    }
+}
+
+function addNewProductRow() {
+    console.log('Adding new product row...');
+    
+    const table = document.getElementById('batch-products-table');
+    const rows = table.querySelectorAll('.batch-product-row:not(#empty-row-template)');
+    const newRowIndex = rows.length;
+    
+    console.log('Current row count:', rows.length, 'New row index:', newRowIndex);
+    
+    // Update the TOTAL_FORMS field
+    const totalFormsField = document.querySelector('[name="batch_products-TOTAL_FORMS"]');
+    if (totalFormsField) {
+        totalFormsField.value = parseInt(totalFormsField.value) + 1;
+        console.log('Updated TOTAL_FORMS to:', totalFormsField.value);
+    }
+    
+    // Generate product options
+    let productOptions = '<option value="">Select Product...</option>';
+    productsData.forEach(product => {
+        productOptions += `<option value="${product.id}">${product.name}</option>`;
+    });
+    
+    const newRow = document.createElement('tr');
+    newRow.className = 'batch-product-row';
+    newRow.innerHTML = `
+        <td>
+            <select class="form-select category-filter" data-row-index="${newRowIndex}">
+                <option value="">All Categories</option>
+                <option value="cake">Cake</option>
+                <option value="pastry">Pastry</option>
+                <option value="dessert">Dessert</option>
+                <option value="snack">Snack</option>
+                <option value="coffee">Coffee</option>
+                <option value="non-coffee">Non-coffee</option>
+            </select>
+        </td>
+        <td>
+            <select name="batch_products-${newRowIndex}-product" class="form-select product-select" required>
+                ${productOptions}
+            </select>
+        </td>
+        <td>
+            <input type="number" name="batch_products-${newRowIndex}-quantity" class="form-control" min="1" step="1" required placeholder="0">
+        </td>
+        <td>
+            <input type="text" name="batch_products-${newRowIndex}-unit" class="form-control" value="pcs" required>
+        </td>
+        <td class="action-buttons">
+            <button type="button" class="btn btn-view btn-sm view-materials-btn me-1" disabled>
+                <i class="fas fa-list"></i> View
+            </button>
+            <button type="button" class="btn btn-delete btn-sm remove-batch-product">
+                Delete
+            </button>
+        </td>
+    `;
+    
+    table.appendChild(newRow);
+    attachBatchProductHandlers(newRow);
+    
+    console.log('New row added successfully');
+    
+    // Check materials after adding
+    setTimeout(checkProductsMaterials, 100);
+}
+
+function attachBatchProductHandlers(row) {
+    const productSelect = row.querySelector('select[name*="-product"]');
+    const quantityInput = row.querySelector('input[name*="-quantity"]');
+    const categoryFilter = row.querySelector('.category-filter');
+    const removeButton = row.querySelector('.remove-batch-product');
+    const viewMaterialsBtn = row.querySelector('.view-materials-btn');
+    
+    if (categoryFilter) {
+        categoryFilter.addEventListener('change', function() {
+            filterProductsForRow(row, this.value);
+        });
+    }
+    
+    if (productSelect) {
+        productSelect.addEventListener('change', function() {
+            checkProductsMaterials();
+            updateViewMaterialsButton(row);
+        });
+    }
+    
+    if (quantityInput) {
+        quantityInput.addEventListener('input', debounce(function() {
+            checkProductsMaterials();
+            updateViewMaterialsButton(row);
+        }, 500));
+    }
+    
+    if (viewMaterialsBtn) {
+        viewMaterialsBtn.addEventListener('click', function() {
+            loadSingleProductMaterials(row);
+        });
+    }
+    
+    if (removeButton) {
+        removeButton.addEventListener('click', function() {
+            const deleteCheckbox = row.querySelector('input[name$="-DELETE"]');
+            
+            if (deleteCheckbox) {
+                // This is an existing form - mark for deletion
+                deleteCheckbox.checked = true;
+                row.style.display = 'none';
+            } else {
+                // This is a new form - remove entirely
+                const rows = document.querySelectorAll('.batch-product-row:not(#empty-row-template)');
+                if (rows.length > 1) {
+                    // Update the TOTAL_FORMS field
+                    const totalFormsField = document.querySelector('[name="batch_products-TOTAL_FORMS"]');
+                    if (totalFormsField) {
+                        totalFormsField.value = parseInt(totalFormsField.value) - 1;
+                    }
+                    
+                    row.remove();
+                }
+            }
+            
+            // Check materials after removal
+            setTimeout(checkProductsMaterials, 100);
+        });
+    }
+}
+
+function filterProductsForRow(row, categoryFilter) {
+    const productSelect = row.querySelector('.product-select');
+    if (!productSelect) return;
+    
+    // Clear current options
+    productSelect.innerHTML = '<option value="">Select Product...</option>';
+    
+    // Filter products based on category
+    const filteredProducts = categoryFilter ? 
+        productsData.filter(product => product.category === categoryFilter) : 
+        productsData;
+    
+    // Add filtered options
+    filteredProducts.forEach(product => {
+        const option = document.createElement('option');
+        option.value = product.id;
+        option.textContent = product.name;
+        productSelect.appendChild(option);
+    });
+    
+    // Trigger material check after filtering
+    setTimeout(checkProductsMaterials, 100);
+}
+
+// View Materials functionality for individual rows
+function updateViewMaterialsButton(row) {
+    const productSelect = row.querySelector('select[name*="-product"]');
+    const quantityInput = row.querySelector('input[name*="-quantity"]');
+    const viewMaterialsBtn = row.querySelector('.view-materials-btn');
+    
+    if (viewMaterialsBtn && productSelect && quantityInput) {
+        const hasProduct = productSelect.value && quantityInput.value > 0;
+        viewMaterialsBtn.disabled = !hasProduct;
+    }
+}
+
+function loadSingleProductMaterials(row) {
+    const productSelect = row.querySelector('select[name*="-product"]');
+    const quantityInput = row.querySelector('input[name*="-quantity"]');
+    
+    if (!productSelect || !quantityInput || !productSelect.value || !quantityInput.value) {
+        return;
+    }
+    
+    const productName = productSelect.options[productSelect.selectedIndex].text;
+    const currentRowIndex = getCurrentRowIndex(row);
+    const otherAllocations = calculateMaterialAllocations(currentRowIndex);
+    
+    const product = {
+        product_id: productSelect.value,
+        product_name: productName,
+        quantity: parseFloat(quantityInput.value) || 0
+    };
+
+    const container = document.getElementById('materialsTableContainer');
+    
+    // Show loading state
+    container.innerHTML = `
+        <div class="text-center">
+            <div class="spinner-border text-info" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-muted">Loading materials...</p>
+        </div>
+    `;
+    
+    // Fetch materials for single product using the single product endpoint with allocations
+    fetch('/inventory/ajax/check-single-product-materials-with-allocations/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({
+            product_id: product.product_id,
+            quantity: product.quantity,
+            other_allocations: otherAllocations  // Include other product allocations
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        displaySingleProductMaterialsTable(data, product);
+    })
+    .catch(error => {
+        console.error('Error loading materials:', error);
+        container.innerHTML = '<p class="text-danger text-center">Error loading materials. Please try again.</p>';
+    });
+    
+    // Show the modal
+    const modal = new bootstrap.Modal(document.getElementById('materialsModal'));
+    modal.show();
+}
+
+function displaySingleProductMaterialsTable(data, product) {
+    const container = document.getElementById('materialsTableContainer');
+    
+    // For single product, we need to construct materials list from the product recipe
+    // We'll use the single product endpoint which should return materials in the 'materials' field
+    let materials = [];
+    
+    // Check if we have materials from single product endpoint
+    if (data.all_materials && Array.isArray(data.all_materials)) {
+        materials = data.all_materials;
+    }
+    
+    // If no materials or we need to get all materials (not just insufficient ones)
+    // we'll need to create a different endpoint or modify the existing one
+    if (materials.length === 0) {
+        container.innerHTML = '<p class="text-muted text-center">No materials required for this product.</p>';
+        return;
+    }
+    
+    let html = `
+        <div class="mb-3">
+            <h6 class="text-muted">Product: ${product.product_name} (${product.quantity})</h6>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm" style="background-color: white;">
+                <thead class="table-light">
+                    <tr>
+                        <th>Material</th>
+                        <th>Required</th>
+                        <th>Available</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    materials.forEach(material => {
+        const availableClass = material.available >= material.required ? 'text-success' : 'text-danger';
+        const brandInfo = material.brand ? `<br><small class="text-muted">${material.brand}</small>` : '';
+        
+        html += `
+            <tr>
+                <td>
+                    <strong>${material.material_name}</strong>
+                    ${brandInfo}
+                </td>
+                <td>${material.required} ${material.unit}</td>
+                <td class="${availableClass}">${material.available} ${material.unit}</td>
+            </tr>
+        `;
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    // Add simple status message
+    const insufficientCount = materials.filter(m => m.available < m.required).length;
+    if (insufficientCount > 0) {
+        html += `
+            <div class="alert alert-warning mt-3">
+                <strong>Warning:</strong> ${insufficientCount} material(s) have insufficient stock.
+            </div>
+        `;
+    } else {
+        html += `
+            <div class="alert alert-success mt-3">
+                All materials are available for this product.
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+}
+
+// Utility functions
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+function getCsrfToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]').value;
+}
+
+// Handle unused materials modal (keep existing functionality)
+document.getElementById('cancelProductionBtn')?.addEventListener('click', function() {
+    // Get production ID from data attribute
+    const productionData = document.getElementById('production-data');
+    const productionId = productionData ? parseInt(productionData.dataset.productionId) : 0;
+    
+    if (productionId > 0) {
+        fetch(`/inventory/ajax/production/${productionId}/materials/`)
+            .then(response => response.json())
+            .then(data => {
+                const table = document.getElementById('unusedMaterialsTable');
+                table.innerHTML = '';
+                
+                data.materials.forEach((material, index) => {
+                    const row = document.createElement('tr');
+                    const brandInfo = material.brand ? `<br><small class="text-muted">${material.brand}</small>` : '';
+                    row.innerHTML = `
+                        <td>
+                            <strong>${material.name}</strong>
+                            ${brandInfo}
+                            <br><small class="text-muted">Base unit: ${material.unit}</small>
+                        </td>
+                        <td>${material.quantity_used} ${material.unit}</td>
+                        <td><input type="number" class="form-control" name="return_qty_${material.id}" min="0" max="${material.quantity_used}" step="0.01"></td>
+                        <td><input type="text" class="form-control" name="return_notes_${material.id}" placeholder="Reason for return"></td>
+                    `;
+                    table.appendChild(row);
+                });
+                
+                new bootstrap.Modal(document.getElementById('unusedMaterialsModal')).show();
+            })
+            .catch(error => {
+                console.error('Error loading materials:', error);
+                alert('Error loading materials for cancellation.');
+            });
+    }
+});
+
+// Handle confirm cancellation
+document.getElementById('confirmCancelBtn')?.addEventListener('click', function() {
+    const unusedMaterials = [];
+    const table = document.getElementById('unusedMaterialsTable');
+    
+    table.querySelectorAll('tr').forEach(row => {
+        const materialId = row.querySelector('[name^="return_qty_"]')?.name.split('_')[2];
+        const quantity = row.querySelector('[name^="return_qty_"]')?.value;
+        const notes = row.querySelector('[name^="return_notes_"]')?.value;
+        
+        if (materialId && quantity && parseFloat(quantity) > 0) {
+            unusedMaterials.push({
+                material_id: materialId,
+                quantity: quantity,
+                notes: notes || 'Production cancelled'
+            });
+        }
+    });
+    
+    document.getElementById('unusedMaterialsInput').value = JSON.stringify(unusedMaterials);
+    
+    // Submit the form with cancel action
+    const form = document.getElementById('productionForm');
+    const cancelInput = document.createElement('input');
+    cancelInput.type = 'hidden';
+    cancelInput.name = 'cancel_production';
+    cancelInput.value = '1';
+    form.appendChild(cancelInput);
+    
+    form.submit();
+});
+
+// Helper function to calculate material allocations across all products in the batch
+function calculateMaterialAllocations(excludeRowIndex = null) {
+    const materialAllocations = {};
+    const rows = document.querySelectorAll('.batch-product-row:not(#empty-row-template)');
+    
+    rows.forEach((row, index) => {
+        // Skip the row we're currently checking materials for
+        if (excludeRowIndex !== null && index === excludeRowIndex) {
+            return;
+        }
+        
+        const productSelect = row.querySelector('select[name*="-product"]');
+        const quantityInput = row.querySelector('input[name*="-quantity"]');
+        
+        if (productSelect && quantityInput && productSelect.value && quantityInput.value) {
+            const productId = productSelect.value;
+            const quantity = parseFloat(quantityInput.value) || 0;
+            
+            // Find the product in our data
+            const product = productsData.find(p => p.id == productId);
+            if (product) {
+                // We would need to get the recipe details for this product
+                // For now, we'll collect the product info and let the backend calculate
+                if (!materialAllocations[productId]) {
+                    materialAllocations[productId] = {
+                        product_id: productId,
+                        quantity: 0
+                    };
+                }
+                materialAllocations[productId].quantity += quantity;
+            }
+        }
+    });
+    
+    return Object.values(materialAllocations);
+}
+
+// Helper function to get current row index
+function getCurrentRowIndex(row) {
+    const rows = Array.from(document.querySelectorAll('.batch-product-row:not(#empty-row-template)'));
+    return rows.indexOf(row);
+}
+</script>
+{% endblock %}

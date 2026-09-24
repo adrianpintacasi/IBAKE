@@ -1,0 +1,31 @@
+<div class="modal fade" id="deleteOrderModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm Delete</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete Sales Order #{{ order.sales_order_id }} for {{ order.customer_name }}?</p>
+        <p class="text-danger"><strong>Warning:</strong> This action cannot be undone and will delete all order items associated with this order.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <form method="post" id="deleteOrderForm" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger">Delete Order</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+$('#deleteOrderForm').submit(function(e) {
+    e.preventDefault();
+    $.post(window.location.href, function(data) {
+        if (data.success) {
+            location.reload();
+        }
+    });
+});
+</script> 

@@ -1,0 +1,41 @@
+    <div class="form-group">
+        <label for="id_quantity">Quantity:</label>
+        {{ form.quantity }}
+        <span id="unit_display"></span>
+    </div>
+    <div class="form-group">
+        <label for="id_total_stock">Total Stock:</label>
+        <span id="total_stock">0</span>
+    </div>
+    <script>
+        function updateTotalStock() {
+            const quantity = parseFloat(document.getElementById('id_quantity').value) || 0;
+            const unit = document.getElementById('id_unit').value;
+            document.getElementById('unit_display').textContent = unit ? ` × ${unit}` : '';
+            document.getElementById('total_stock').textContent = quantity + (unit ? ` × ${unit}` : '');
+        }
+        document.getElementById('id_quantity').addEventListener('input', updateTotalStock);
+        document.getElementById('id_unit').addEventListener('input', updateTotalStock);
+        updateTotalStock();
+    </script>
+    <th>Total Stock</th>
+    <td class="total-stock-cell"></td>
+    <script>
+        function updateTotalStockRow(row) {
+            const quantityInput = row.querySelector('input[name$="quantity"]');
+            const unitInput = row.querySelector('input[name$="unit"]');
+            const totalStockCell = row.querySelector('.total-stock-cell');
+            if (quantityInput && unitInput && totalStockCell) {
+                const quantity = parseFloat(quantityInput.value) || 0;
+                const unit = unitInput.value || '';
+                totalStockCell.textContent = quantity + (unit ? ' × ' + unit + ' = ' + (quantity ? quantity + unit : '') : '');
+            }
+        }
+        function updateAllTotalStock() {
+            document.querySelectorAll('tr').forEach(updateTotalStockRow);
+        }
+        document.querySelectorAll('input[name$="quantity"], input[name$="unit"]').forEach(function(input) {
+            input.addEventListener('input', updateAllTotalStock);
+        });
+        updateAllTotalStock();
+    </script> 

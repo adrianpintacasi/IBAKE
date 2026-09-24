@@ -1,0 +1,173 @@
+{% extends 'base.html' %}
+
+{% block title %}Utility Entries - iBAKE Cakes & Pastries{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Utility Entries</h1>
+        <a href="{% url 'accounting:utility_create' %}" class="btn btn-primary">
+            Add Utility Entry
+        </a>
+    </div>
+
+    <!-- Search and Filter Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h6 class="mb-0">Search & Filter</h6>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label for="search" class="form-label">Search Description</label>
+                    <input type="text" class="form-control" id="search" name="search" 
+                           placeholder="Search by description..." value="{{ request.GET.search }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="utility_type" class="form-label">Utility Type</label>
+                    <select class="form-select" id="utility_type" name="utility_type">
+                        <option value="">All Types</option>
+                        <option value="ELECTRICITY" {% if request.GET.utility_type == 'ELECTRICITY' %}selected{% endif %}>Electricity</option>
+                        <option value="WATER" {% if request.GET.utility_type == 'WATER' %}selected{% endif %}>Water</option>
+                        <option value="INTERNET" {% if request.GET.utility_type == 'INTERNET' %}selected{% endif %}>Internet</option>
+                        <option value="RENT" {% if request.GET.utility_type == 'RENT' %}selected{% endif %}>Rent</option>
+                        <option value="OTHER" {% if request.GET.utility_type == 'OTHER' %}selected{% endif %}>Other</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="payment_method" class="form-label">Payment Method</label>
+                    <select class="form-select" id="payment_method" name="payment_method">
+                        <option value="">All Methods</option>
+                        <option value="CASH" {% if request.GET.payment_method == 'CASH' %}selected{% endif %}>Cash</option>
+                        <option value="BANK_TRANSFER" {% if request.GET.payment_method == 'BANK_TRANSFER' %}selected{% endif %}>Bank Transfer</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">&nbsp;</label>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Apply Filter</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th>Amount</th>
+                            <th>Billing Date</th>
+                            <th>Payment Date</th>
+                            <th>Payment Method</th>
+                            <th>Journal Entry</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for utility in utility_entries %}
+                        <tr>
+                            <td>
+                                <span class="badge 
+                                    {% if utility.utility_type == 'ELECTRICITY' %}bg-warning
+                                    {% elif utility.utility_type == 'WATER' %}bg-info
+                                    {% elif utility.utility_type == 'INTERNET' %}bg-primary
+                                    {% elif utility.utility_type == 'RENT' %}bg-danger
+                                    {% else %}bg-secondary
+                                    {% endif %}">
+                                    {{ utility.get_utility_type_display }}
+                                </span>
+                            </td>
+                            <td>{{ utility.description }}</td>
+                            <td><strong>₱{{ utility.amount|floatformat:2 }}</strong></td>
+                            <td>{{ utility.billing_date|date:"M d, Y" }}</td>
+                            <td>{{ utility.payment_date|date:"M d, Y" }}</td>
+                            <td>
+                                <span class="badge 
+                                    {% if utility.payment_method == 'CASH' %}bg-success
+                                    {% else %}bg-info
+                                    {% endif %}">
+                                    {{ utility.get_payment_method_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if utility.journal_entry %}
+                                    <a href="{% url 'accounting:journal_entry_detail' utility.journal_entry.pk %}" 
+                                       class="text-decoration-none">
+                                        JE-{{ utility.journal_entry.entry_number }}
+                                    </a>
+                                {% else %}
+                                    <span class="text-muted">No journal entry</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-outline-info btn-sm" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#utilityModal{{ utility.id }}">
+                                    View
+                                </button>
+                            </td>
+                        </tr>
+
+                        <!-- Utility Detail Modal -->
+                        <div class="modal fade" id="utilityModal{{ utility.id }}" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">{{ utility.get_utility_type_display }} Details</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <dl class="row">
+                                            <dt class="col-sm-4">Type:</dt>
+                                            <dd class="col-sm-8">{{ utility.get_utility_type_display }}</dd>
+                                            
+                                            <dt class="col-sm-4">Description:</dt>
+                                            <dd class="col-sm-8">{{ utility.description }}</dd>
+                                            
+                                            <dt class="col-sm-4">Amount:</dt>
+                                            <dd class="col-sm-8"><strong>₱{{ utility.amount|floatformat:2 }}</strong></dd>
+                                            
+                                            <dt class="col-sm-4">Billing Date:</dt>
+                                            <dd class="col-sm-8">{{ utility.billing_date|date:"M d, Y" }}</dd>
+                                            
+                                            <dt class="col-sm-4">Payment Date:</dt>
+                                            <dd class="col-sm-8">{{ utility.payment_date|date:"M d, Y" }}</dd>
+                                            
+                                            <dt class="col-sm-4">Payment Method:</dt>
+                                            <dd class="col-sm-8">{{ utility.get_payment_method_display }}</dd>
+                                            
+                                            {% if utility.notes %}
+                                            <dt class="col-sm-4">Notes:</dt>
+                                            <dd class="col-sm-8">{{ utility.notes }}</dd>
+                                            {% endif %}
+                                        </dl>
+                                    </div>
+                                    <div class="modal-footer">
+                                        {% if utility.journal_entry %}
+                                            <a href="{% url 'accounting:journal_entry_detail' utility.journal_entry.pk %}" 
+                                               class="btn btn-outline-primary">View Journal Entry</a>
+                                        {% endif %}
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center">
+                                <p class="text-muted">No utility entries found. <a href="{% url 'accounting:utility_create' %}">Create the first utility entry</a>.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

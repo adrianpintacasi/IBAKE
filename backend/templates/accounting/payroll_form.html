@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Add Payroll Entry - iBAKE Cakes & Pastries{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="mb-0">Add Payroll Entry</h2>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.employee.id_for_label }}" class="form-label">Employee</label>
+                                    {{ form.employee }}
+                                    {% for error in form.employee.errors %}
+                                        <div class="text-danger">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.payment_method.id_for_label }}" class="form-label">Payment Method</label>
+                                    {{ form.payment_method }}
+                                    {% for error in form.payment_method.errors %}
+                                        <div class="text-danger">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.pay_period_start.id_for_label }}" class="form-label">Pay Period Start</label>
+                                    {{ form.pay_period_start }}
+                                    {% for error in form.pay_period_start.errors %}
+                                        <div class="text-danger">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.pay_period_end.id_for_label }}" class="form-label">Pay Period End</label>
+                                    {{ form.pay_period_end }}
+                                    {% for error in form.pay_period_end.errors %}
+                                        <div class="text-danger">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.basic_salary.id_for_label }}" class="form-label">Basic Salary (₱)</label>
+                                    {{ form.basic_salary }}
+                                    {% for error in form.basic_salary.errors %}
+                                        <div class="text-danger">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.overtime_pay.id_for_label }}" class="form-label">Overtime Pay (₱)</label>
+                                    {{ form.overtime_pay }}
+                                    {% for error in form.overtime_pay.errors %}
+                                        <div class="text-danger">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.payment_date.id_for_label }}" class="form-label">Payment Date</label>
+                                    {{ form.payment_date }}
+                                    {% for error in form.payment_date.errors %}
+                                        <div class="text-danger">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Total Pay</label>
+                                    <div class="form-control" id="totalPay">₱0.00</div>
+                                    <div class="form-text">Automatically calculated: Basic Salary + Overtime Pay</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">Notes (Optional)</label>
+                            {{ form.notes }}
+                            {% for error in form.notes.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary">Create Payroll Entry</button>
+                            <a href="{% url 'accounting:payroll_list' %}" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const basicSalaryField = document.getElementById('{{ form.basic_salary.id_for_label }}');
+    const overtimePayField = document.getElementById('{{ form.overtime_pay.id_for_label }}');
+    const totalPayDisplay = document.getElementById('totalPay');
+    
+    function calculateTotal() {
+        const basicSalary = parseFloat(basicSalaryField.value) || 0;
+        const overtimePay = parseFloat(overtimePayField.value) || 0;
+        const total = basicSalary + overtimePay;
+        totalPayDisplay.textContent = '₱' + total.toFixed(2);
+    }
+    
+    basicSalaryField.addEventListener('input', calculateTotal);
+    overtimePayField.addEventListener('input', calculateTotal);
+    
+    // Calculate on page load
+    calculateTotal();
+});
+</script>
+{% endblock %} 

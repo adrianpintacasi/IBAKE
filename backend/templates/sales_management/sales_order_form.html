@@ -1,0 +1,569 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block content %}
+<h2>Create New Sales Order</h2>
+
+<!-- Form Errors Display -->
+{% if form.errors %}
+<div class="alert alert-danger">
+    <h6>Form Errors:</h6>
+    {{ form.errors }}
+</div>
+{% endif %}
+
+<form method="post" id="salesOrderForm">
+    {% csrf_token %}
+    
+    <!-- Hidden fields that might be required -->
+    <input type="hidden" name="status" value="New">
+    <input type="hidden" name="total_amount" value="0">
+    
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label for="customerSelect">Customer</label>
+            <div class="input-group">
+                <select name="customer" id="customerSelect" class="form-control" required>
+                    <option value="">Select Customer</option>
+                    {% for customer in customers %}
+                        <option value="{{ customer.id }}" data-address="{{ customer.address|default:'' }}">{{ customer.first_name }} {{ customer.last_name }}</option>
+                    {% empty %}
+                        <option value="">No customers available</option>
+                    {% endfor %}
+                </select>
+                <button type="button" class="btn btn-outline-primary" id="addCustomerBtn">Add New Customer</button>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <label for="employeeSelect">Employee</label>
+            <select name="employee" id="employeeSelect" class="form-control" required>
+                <option value="">Select Employee</option>
+                {% for employee in employees %}
+                    <option value="{{ employee.id }}">{{ employee.first_name }} {{ employee.last_name }}</option>
+                {% empty %}
+                    <option value="">No employees available</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <div class="row mb-3">
+        <div class="col-md-12">
+            <label for="customerAddress">Customer Address</label>
+            <textarea name="customer_address" id="customerAddress" class="form-control" rows="2" readonly></textarea>
+        </div>
+    </div>
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label for="amountPaid">Amount Paid</label>
+            <input type="number" name="amount_paid" id="amountPaid" class="form-control" step="0.01" min="0" value="0.00">
+        </div>
+    </div>
+    
+    <!-- Customer Name Hidden Field (will be populated by JavaScript) -->
+    <input type="hidden" name="customer_name" id="customerName">
+    
+    <h5>Order Items</h5>
+    
+    <table class="table table-bordered" id="itemsTable">
+        <thead>
+            <tr>
+                <th>Category</th>
+                <th>Product</th>
+                <th>Quantity</th>
+                <th>Unit Price</th>
+                <th>Discount (%)</th>
+                <th>Subtotal</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="itemsTableBody">
+            <!-- Rows will be added by JavaScript -->
+        </tbody>
+    </table>
+    <button type="button" class="btn btn-secondary mb-3" id="addItemBtn">Add Item</button>
+    <div class="mb-3">
+        <strong>Total Amount: ₱<span id="totalAmount">0.00</span></strong>
+    </div>
+    <button type="submit" class="btn btn-primary">Create Sales Order</button>
+    <a href="{% url 'sales_management:sales_order_list' %}" class="btn btn-secondary">Cancel</a>
+    <input type="hidden" name="items_json" id="itemsJson">
+</form>
+
+<!-- Add Customer Modal -->
+<div class="modal fade" id="addCustomerModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="addCustomerForm">
+        <div class="modal-header">
+          <h5 class="modal-title">Add New Customer</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row">
+            <div class="col-md-6 mb-2">
+              <label>First Name *</label>
+              <input type="text" name="first_name" class="form-control" required>
+            </div>
+            <div class="col-md-6 mb-2">
+              <label>Last Name *</label>
+              <input type="text" name="last_name" class="form-control" required>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-2">
+              <label>Phone</label>
+              <input type="text" name="phone" class="form-control">
+            </div>
+            <div class="col-md-6 mb-2">
+              <label>Email</label>
+              <input type="email" name="email" class="form-control">
+            </div>
+          </div>
+          <div class="mb-2">
+            <label>Address</label>
+            <textarea name="address" class="form-control" rows="2"></textarea>
+          </div>
+          <div class="mb-2">
+            <label>Added By *</label>
+            <select name="added_by" class="form-control" required>
+              <option value="">Select Employee</option>
+              {% for employee in employees %}
+              <option value="{{ employee.id }}">{{ employee.first_name }} {{ employee.last_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Customer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Inventory Warning Modal -->
+<div class="modal fade" id="inventoryWarningModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-danger">
+        <h5 class="modal-title text-white">Inventory Warning</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-danger">
+          <strong>Insufficient Stock!</strong> Please restock the following items:
+        </div>
+        
+        <div class="table-responsive">
+          <table class="table table-bordered table-sm">
+            <thead class="table-danger">
+              <tr>
+                <th>Product</th>
+                <th>Issue</th>
+                <th>Available</th>
+                <th>Shortage</th>
+              </tr>
+            </thead>
+            <tbody id="inventoryIssuesTableBody">
+              <!-- Issues will be populated by JavaScript -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Edit Order</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden data for JavaScript -->
+<div id="products-data" style="display: none;">
+    {% for product in products %}
+    <span data-id="{{ product.id }}" data-name="{{ product.name|escapejs }}" data-price="{{ product.selling_price }}" data-category="{{ product.category }}"></span>
+    {% endfor %}
+</div>
+
+<!-- JavaScript -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+console.log('JavaScript loading...');
+
+// Get products data from hidden div
+var products = [];
+$('#products-data span').each(function() {
+    products.push({
+        id: $(this).data('id'),
+        name: $(this).data('name'),
+        selling_price: parseFloat($(this).data('price')),
+        category: $(this).data('category')
+    });
+});
+
+console.log('Products loaded:', products.length, products);
+
+$(document).ready(function() {
+    console.log('Document ready');
+    
+    // Add initial row
+    addItemRow();
+    console.log('Initial row added');
+    
+    // Customer selection and address autofill
+    $('#customerSelect').on('change', function() {
+        var selectedOption = $(this).find('option:selected');
+        var address = selectedOption.data('address') || '';
+        var customerName = selectedOption.text();
+        $('#customerAddress').val(address);
+        $('#customerName').val(customerName);
+        console.log('Customer changed, address:', address, 'name:', customerName);
+    });
+    
+    // Add new customer modal
+    $('#addCustomerBtn').click(function() {
+        console.log('Add customer button clicked');
+        $('#addCustomerModal').modal('show');
+    });
+    
+    $('#addCustomerForm').submit(function(e) {
+        e.preventDefault();
+        console.log('Adding new customer...');
+        
+        $.post("{% url 'sales_management:ajax_add_customer' %}", $(this).serialize())
+        .done(function(data) {
+            console.log('Customer add response:', data);
+            if (data.success) {
+                // Add new customer to dropdown and select it
+                var newOption = `<option value="${data.customer.id}" data-address="${data.customer.address}" selected>${data.customer.name}</option>`;
+                $('#customerSelect').append(newOption);
+                $('#customerSelect').val(data.customer.id).trigger('change');
+                $('#addCustomerModal').modal('hide');
+                $('#addCustomerForm')[0].reset();
+            } else {
+                alert('Error adding customer. Please check the form.');
+                console.error('Error:', data.errors);
+            }
+        })
+        .fail(function(xhr, status, error) {
+            console.error('Ajax error:', status, error);
+            alert('Error connecting to server.');
+        });
+    });
+    
+    // Add item row
+    $('#addItemBtn').click(function() {
+        console.log('Add item button clicked');
+        addItemRow();
+    });
+    
+    // Event delegation for dynamic elements
+    $(document).on('change', '.item-category', function() {
+        var categoryDropdown = $(this);
+        var productDropdown = categoryDropdown.closest('tr').find('.item-product');
+        var selectedCategory = categoryDropdown.val();
+        
+        console.log('Category changed for row:', selectedCategory);
+        updateProductDropdownForRow(productDropdown, selectedCategory);
+    });
+    
+    $(document).on('change', '.item-product', function() {
+        var selectedOption = $(this).find('option:selected');
+        var price = selectedOption.data('price') || 0;
+        $(this).closest('tr').find('.item-price').val(parseFloat(price).toFixed(2));
+        console.log('Product changed, price:', price);
+        recalcTotal();
+    });
+    
+    $(document).on('input', '.item-qty, .item-discount', function() {
+        console.log('Quantity or discount changed');
+        recalcTotal();
+    });
+    
+    $(document).on('click', '.remove-item', function() {
+        console.log('Remove item clicked');
+        $(this).closest('tr').remove();
+        recalcTotal();
+    });
+    
+    // Form submission
+    $('#salesOrderForm').submit(function(e) {
+        e.preventDefault();
+        console.log('Form submitting...');
+        
+        // Validate required fields
+        var customer = $('#customerSelect').val();
+        var employee = $('#employeeSelect').val();
+        var customerName = $('#customerName').val();
+        
+        console.log('Form data check:');
+        console.log('Customer:', customer);
+        console.log('Employee:', employee);
+        console.log('Customer Name:', customerName);
+        
+        if (!customer) {
+            alert('Please select a customer.');
+            return false;
+        }
+        
+        if (!employee) {
+            alert('Please select an employee.');
+            return false;
+        }
+        
+        var items = [];
+        $('#itemsTableBody tr').each(function() {
+            var product = $(this).find('.item-product').val();
+            var qty = $(this).find('.item-qty').val();
+            var price = $(this).find('.item-price').val();
+            var discount = $(this).find('.item-discount').val();
+            
+            if (product && qty && price) {
+                items.push({
+                    product: product, 
+                    quantity: qty, 
+                    unit_price: price, 
+                    discount: discount || 0
+                });
+            }
+        });
+        
+        console.log('Items to submit:', items);
+        
+        if (items.length === 0) {
+            alert('Please add at least one item.');
+            return false;
+        }
+        
+        // Check inventory before proceeding
+        checkInventoryAvailability(items, function(hasIssues, issues) {
+            if (hasIssues) {
+                displayInventoryWarning(issues);
+            } else {
+                proceedWithOrderCreation();
+            }
+        });
+    });
+});
+
+function addItemRow() {
+    console.log('Adding item row, products available:', products.length);
+    
+    var row = `<tr>
+        <td>
+            <select class="form-control item-category" required>
+                <option value="">Select Category</option>
+                <option value="cake">Cake</option>
+                <option value="pastry">Pastry</option>
+                <option value="dessert">Dessert</option>
+                <option value="snack">Snack</option>
+                <option value="coffee">Coffee</option>
+                <option value="non-coffee">Non-coffee</option>
+            </select>
+        </td>
+        <td>
+            <select class="form-control item-product" required>
+                <option value="">Select Category First</option>
+            </select>
+        </td>
+        <td><input type="number" min="1" class="form-control item-qty" value="1" required></td>
+        <td><input type="number" min="0" step="0.01" class="form-control item-price" value="0.00" required></td>
+        <td><input type="number" min="0" max="100" step="0.01" class="form-control item-discount" value="0"></td>
+        <td><input type="text" class="form-control item-subtotal" value="0.00" readonly></td>
+        <td><button type="button" class="btn btn-danger btn-sm remove-item">Delete</button></td>
+    </tr>`;
+    
+    $('#itemsTableBody').append(row);
+    console.log('Row added to table');
+}
+
+function getFilteredProducts(category) {
+    if (!category) {
+        return []; // Return empty array if no category selected
+    }
+    return products.filter(function(product) {
+        return product.category === category;
+    });
+}
+
+function updateProductDropdownForRow(productDropdown, selectedCategory) {
+    var filteredProducts = getFilteredProducts(selectedCategory);
+    var currentValue = productDropdown.val();
+    
+    // Clear and rebuild options
+    productDropdown.empty();
+    
+    if (!selectedCategory) {
+        productDropdown.append('<option value="">Select Category First</option>');
+    } else if (filteredProducts && filteredProducts.length > 0) {
+        productDropdown.append('<option value="">Select Product</option>');
+        filteredProducts.forEach(function(p) {
+            var selected = (currentValue == p.id) ? 'selected' : '';
+            productDropdown.append(`<option value="${p.id}" data-price="${p.selling_price}" data-category="${p.category}" ${selected}>${p.name}</option>`);
+        });
+    } else {
+        productDropdown.append('<option value="">No products available for this category</option>');
+    }
+    
+    // If current selection is not in filtered list, clear it and reset price
+    if (currentValue && !filteredProducts.find(p => p.id == currentValue)) {
+        productDropdown.val('');
+        productDropdown.closest('tr').find('.item-price').val('0.00');
+    }
+    
+    recalcTotal();
+}
+
+function updateProductDropdowns() {
+    // This function is no longer needed since we handle per-row updates
+    console.log('Global updateProductDropdowns called - now handled per row');
+}
+
+function recalcTotal() {
+    var total = 0;
+    $('#itemsTableBody tr').each(function() {
+        var qty = parseFloat($(this).find('.item-qty').val()) || 0;
+        var price = parseFloat($(this).find('.item-price').val()) || 0;
+        var discount = parseFloat($(this).find('.item-discount').val()) || 0;
+        var subtotal = qty * price * (1 - discount / 100);
+        $(this).find('.item-subtotal').val(subtotal.toFixed(2));
+        total += subtotal;
+    });
+    $('#totalAmount').text(total.toFixed(2));
+    console.log('Total recalculated:', total);
+}
+
+function checkInventoryAvailability(items, callback) {
+    console.log('Checking inventory availability...');
+    
+    $.ajax({
+        url: "{% url 'sales_management:ajax_check_inventory' %}",
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        data: JSON.stringify({
+            items: items
+        }),
+        success: function(response) {
+            console.log('Inventory check response:', response);
+            if (response.success) {
+                callback(response.has_issues, response.issues);
+            } else {
+                alert('Error checking inventory: ' + response.error);
+                callback(false, []);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Inventory check error:', status, error);
+            alert('Error checking inventory. Please try again.');
+            callback(false, []);
+        }
+    });
+}
+
+function displayInventoryWarning(issues) {
+    console.log('Displaying inventory warning:', issues);
+    
+    var issuesHtml = '';
+    
+    issues.forEach(function(issue) {
+        issuesHtml += '<tr>';
+        
+        // Product column
+        var productName = issue.product + ' (' + issue.category + ')';
+        issuesHtml += '<td><strong>' + productName + '</strong></td>';
+        
+        // Issue column
+        var issueText = '';
+        if (issue.type === 'finished_goods') {
+            issueText = 'Out of Stock';
+        } else if (issue.type === 'raw_material') {
+            issueText = 'Missing: ' + issue.ingredient;
+        } else if (issue.type === 'no_recipe') {
+            issueText = 'No Recipe';
+        } else {
+            issueText = 'Error';
+        }
+        issuesHtml += '<td>' + issueText + '</td>';
+        
+        // Available column
+        var availableText = '';
+        if (issue.type === 'finished_goods') {
+            availableText = '<strong>' + issue.available + '</strong> units';
+        } else if (issue.type === 'raw_material') {
+            availableText = '<strong>' + issue.available + '</strong> ' + issue.unit;
+        } else {
+            availableText = 'N/A';
+        }
+        issuesHtml += '<td>' + availableText + '</td>';
+        
+        // Shortage column
+        var shortageText = '';
+        if (issue.type === 'finished_goods') {
+            shortageText = '<strong class="text-danger">' + issue.shortage + '</strong> units';
+        } else if (issue.type === 'raw_material') {
+            shortageText = '<strong class="text-danger">' + issue.shortage + '</strong> ' + issue.unit;
+        } else {
+            shortageText = 'N/A';
+        }
+        issuesHtml += '<td>' + shortageText + '</td>';
+        
+        issuesHtml += '</tr>';
+    });
+    
+    $('#inventoryIssuesTableBody').html(issuesHtml);
+    $('#inventoryWarningModal').modal('show');
+}
+
+function proceedWithOrderCreation() {
+    console.log('Proceeding with order creation...');
+    
+    // Collect items again (in case user made changes)
+    var items = [];
+    $('#itemsTableBody tr').each(function() {
+        var product = $(this).find('.item-product').val();
+        var qty = $(this).find('.item-qty').val();
+        var price = $(this).find('.item-price').val();
+        var discount = $(this).find('.item-discount').val();
+        
+        if (product && qty && price) {
+            items.push({
+                product: product, 
+                quantity: qty, 
+                unit_price: price, 
+                discount: discount || 0
+            });
+        }
+    });
+    
+    // Update total amount before submission
+    $('#totalAmount').each(function() {
+        $('input[name="total_amount"]').val($(this).text());
+    });
+    
+    $('#itemsJson').val(JSON.stringify(items));
+    console.log('Items JSON:', $('#itemsJson').val());
+    console.log('Submitting form...');
+    
+    // Submit the form
+    document.getElementById('salesOrderForm').submit();
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %} 

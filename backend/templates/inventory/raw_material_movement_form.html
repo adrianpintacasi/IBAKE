@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">{{ view.object.pk|yesno:'Edit,Add' }} Raw Material Movement</h2>
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                {% if form|crispy %}
+                    {{ form|crispy }}
+                {% else %}
+                    {{ form.as_p }}
+                {% endif %}
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <button type="submit" class="btn btn-primary px-4">Save</button>
+                    <a href="{% url 'inventory:raw_material_movement_list' %}" class="btn btn-outline-secondary px-4">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %} 

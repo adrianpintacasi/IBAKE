@@ -1,0 +1,314 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Create Journal Entry - iBAKE Cakes & Pastries{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="mb-0">Create Manual Journal Entry</h2>
+                    <small class="text-muted">Use this form to create custom accounting entries for adjustments, corrections, or special transactions.</small>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="journal-entry-form">
+                        {% csrf_token %}
+                        
+                        <!-- Journal Entry Header -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="{{ form.entry_number.id_for_label }}" class="form-label">Entry Number</label>
+                                    {{ form.entry_number }}
+                                    <div class="form-text">Leave as "AUTO" for automatic generation</div>
+                                    {% for error in form.entry_number.errors %}
+                                        <div class="text-danger">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="{{ form.date.id_for_label }}" class="form-label">Date</label>
+                                    {{ form.date }}
+                                    {% for error in form.date.errors %}
+                                        <div class="text-danger">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label">Balance Check</label>
+                                    <div class="form-control" id="balance-status">
+                                        <span class="text-muted">Enter transactions to check balance</span>
+                                    </div>
+                                    <div class="form-text">Total debits must equal total credits</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
+                            {{ form.description }}
+                            {% for error in form.description.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Transaction Lines -->
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">Transaction Lines</h5>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="add-transaction">
+                                    Add Line
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                {{ formset.management_form }}
+                                
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Account</th>
+                                                <th>Description</th>
+                                                <th>Debit (₱)</th>
+                                                <th>Credit (₱)</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="transaction-formset">
+                                            {% for form in formset %}
+                                                <tr class="formset-row">
+                                                    <td style="display: none;">
+                                                        {% for hidden in form.hidden_fields %}
+                                                            {{ hidden }}
+                                                        {% endfor %}
+                                                    </td>
+                                                    <td>
+                                                        {{ form.account }}
+                                                        {% for error in form.account.errors %}
+                                                            <div class="text-danger small">{{ error }}</div>
+                                                        {% endfor %}
+                                                    </td>
+                                                    <td>
+                                                        {{ form.description }}
+                                                        {% for error in form.description.errors %}
+                                                            <div class="text-danger small">{{ error }}</div>
+                                                        {% endfor %}
+                                                    </td>
+                                                    <td>
+                                                        {{ form.debit_amount }}
+                                                        {% for error in form.debit_amount.errors %}
+                                                            <div class="text-danger small">{{ error }}</div>
+                                                        {% endfor %}
+                                                    </td>
+                                                    <td>
+                                                        {{ form.credit_amount }}
+                                                        {% for error in form.credit_amount.errors %}
+                                                            <div class="text-danger small">{{ error }}</div>
+                                                        {% endfor %}
+                                                    </td>
+                                                    <td>
+                                                        {% if form.DELETE %}
+                                                            <div style="display: none;">{{ form.DELETE }}</div>
+                                                        {% endif %}
+                                                            <button type="button" class="btn btn-sm btn-outline-danger remove-transaction">
+                                                                Remove
+                                                            </button>
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr class="table-light">
+                                                <th colspan="2">Totals:</th>
+                                                <th id="total-debits">₱0.00</th>
+                                                <th id="total-credits">₱0.00</th>
+                                                <th></th>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+
+                                {% if formset.non_form_errors %}
+                                    <div class="alert alert-danger">
+                                        {{ formset.non_form_errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary" id="submit-button">
+                                Create Journal Entry
+                            </button>
+                            <a href="{% url 'accounting:journal_entry_list' %}" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const formsetContainer = document.getElementById('transaction-formset');
+    const totalFormsInput = document.getElementById('id_transaction_set-TOTAL_FORMS');
+    const submitButton = document.getElementById('submit-button');
+    const balanceStatus = document.getElementById('balance-status');
+    
+    let formIndex = parseInt(totalFormsInput.value);
+
+    function updateTotals() {
+        let totalDebits = 0;
+        let totalCredits = 0;
+        
+        document.querySelectorAll('.formset-row').forEach(row => {
+            if (!row.style.display || row.style.display !== 'none') {
+                const debitInput = row.querySelector('input[name$="-debit_amount"]');
+                const creditInput = row.querySelector('input[name$="-credit_amount"]');
+                
+                const debitValue = parseFloat(debitInput?.value) || 0;
+                const creditValue = parseFloat(creditInput?.value) || 0;
+                
+                totalDebits += debitValue;
+                totalCredits += creditValue;
+            }
+        });
+        
+        document.getElementById('total-debits').textContent = '₱' + totalDebits.toFixed(2);
+        document.getElementById('total-credits').textContent = '₱' + totalCredits.toFixed(2);
+        
+        // Update balance status
+        const difference = Math.abs(totalDebits - totalCredits);
+        if (totalDebits === 0 && totalCredits === 0) {
+            balanceStatus.innerHTML = '<span class="text-muted">Enter transactions to check balance</span>';
+            submitButton.disabled = true;
+        } else if (difference < 0.01) { // Allow for small rounding errors
+            balanceStatus.innerHTML = '<span class="text-success"><i class="fas fa-check-circle"></i> Balanced</span>';
+            submitButton.disabled = false;
+        } else {
+            balanceStatus.innerHTML = '<span class="text-danger"><i class="fas fa-exclamation-triangle"></i> Out of balance by ₱' + difference.toFixed(2) + '</span>';
+            submitButton.disabled = true;
+        }
+    }
+
+    function addTransactionRow() {
+        // Create new row HTML
+        const newRowHtml = `
+            <tr class="formset-row">
+                <td style="display: none;">
+                    <input type="hidden" name="transaction_set-${formIndex}-id" id="id_transaction_set-${formIndex}-id">
+                </td>
+                <td>
+                    <select name="transaction_set-${formIndex}-account" id="id_transaction_set-${formIndex}-account" class="form-select">
+                        <option value="">Select Account</option>
+                        ${getAccountOptions()}
+                    </select>
+                </td>
+                <td>
+                    <input type="text" name="transaction_set-${formIndex}-description" id="id_transaction_set-${formIndex}-description" class="form-control" placeholder="Transaction description...">
+                </td>
+                <td>
+                    <input type="number" name="transaction_set-${formIndex}-debit_amount" id="id_transaction_set-${formIndex}-debit_amount" class="form-control" step="0.01" min="0" placeholder="0.00">
+                </td>
+                <td>
+                    <input type="number" name="transaction_set-${formIndex}-credit_amount" id="id_transaction_set-${formIndex}-credit_amount" class="form-control" step="0.01" min="0" placeholder="0.00">
+                </td>
+                <td>
+                    <input type="checkbox" name="transaction_set-${formIndex}-DELETE" id="id_transaction_set-${formIndex}-DELETE" style="display: none;">
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-transaction">
+                        Remove
+                    </button>
+                </td>
+            </tr>
+        `;
+        
+        formsetContainer.insertAdjacentHTML('beforeend', newRowHtml);
+        const newRow = formsetContainer.lastElementChild;
+        
+        formIndex++;
+        totalFormsInput.value = formIndex;
+        
+        // Add event listeners to new row
+        addRowEventListeners(newRow);
+        updateTotals();
+    }
+
+    function getAccountOptions() {
+        // Get options from the first account select
+        const firstSelect = document.querySelector('select[name$="-account"]');
+        if (firstSelect) {
+            return firstSelect.innerHTML;
+        }
+        return '';
+    }
+
+    function addRowEventListeners(row) {
+        const debitInput = row.querySelector('input[name$="-debit_amount"]');
+        const creditInput = row.querySelector('input[name$="-credit_amount"]');
+        const removeButton = row.querySelector('.remove-transaction');
+        
+        if (debitInput) {
+            debitInput.addEventListener('input', function() {
+                if (this.value && creditInput) {
+                    creditInput.value = '';
+                }
+                updateTotals();
+            });
+        }
+        
+        if (creditInput) {
+            creditInput.addEventListener('input', function() {
+                if (this.value && debitInput) {
+                    debitInput.value = '';
+                }
+                updateTotals();
+            });
+        }
+        
+        if (removeButton) {
+            removeButton.addEventListener('click', function() {
+                const deleteInput = row.querySelector('input[name$="-DELETE"]');
+                if (deleteInput) {
+                    deleteInput.checked = true;
+                    row.style.display = 'none';
+                    updateTotals();
+                }
+            });
+        }
+    }
+
+    // Add event listeners to existing rows
+    document.querySelectorAll('.formset-row').forEach(addRowEventListeners);
+
+    // Add transaction button
+    document.getElementById('add-transaction').addEventListener('click', addTransactionRow);
+
+    // Initial totals calculation
+    updateTotals();
+    
+    // Form submission validation
+    document.getElementById('journal-entry-form').addEventListener('submit', function(e) {
+        const totalDebits = parseFloat(document.getElementById('total-debits').textContent.replace('₱', '')) || 0;
+        const totalCredits = parseFloat(document.getElementById('total-credits').textContent.replace('₱', '')) || 0;
+        const difference = Math.abs(totalDebits - totalCredits);
+        
+        if (difference >= 0.01) {
+            e.preventDefault();
+            alert('Journal entry is not balanced. Total debits must equal total credits.');
+            return false;
+        }
+        
+        if (totalDebits === 0 && totalCredits === 0) {
+            e.preventDefault();
+            alert('Please add at least one transaction line.');
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %} 

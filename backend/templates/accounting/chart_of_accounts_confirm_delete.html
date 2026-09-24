@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Account - iBAKE Cakes & Pastries{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="mb-0">Delete Account</h2>
+                </div>
+                <div class="card-body">
+                    <p class="mb-4">Are you sure you want to delete the account "{{ object.name }}" ({{ object.code }})?</p>
+                    <form method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">Confirm Delete</button>
+                        <a href="{% url 'accounting:chart_of_accounts' %}" class="btn btn-secondary">Cancel</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

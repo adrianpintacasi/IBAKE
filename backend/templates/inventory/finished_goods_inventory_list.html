@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="mb-0">Finished Goods Inventory</h2>
+                {% if expired_count > 0 %}
+                <button type="button" class="btn btn-warning" id="writeOffExpiredBtn">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Write Off Expired Goods ({{ expired_count }})
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    {% if expired_count > 0 %}
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="alert alert-warning" role="alert">
+                <h6 class="alert-heading"><i class="fas fa-exclamation-triangle"></i> Expired Goods Found</h6>
+                <p class="mb-0">
+                    There are <strong>{{ expired_count }}</strong> expired batch(es) that need to be written off.
+                    Click the "Write Off Expired Goods" button to remove them from inventory and record the loss.
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="mb-3">
+        <p class="text-muted">Items are sorted by expiry date</p>
+    </div>
+    
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Batch Number</th>
+                            <th>Product</th>
+                            <th>Production Date</th>
+                            <th>Expiry Date</th>
+                            <th>Total Quantity</th>
+                            <th>Remaining</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in inventory %}
+                        {% now "Y-m-d" as today %}
+                        {% with item.expiry_date|date:"Y-m-d" as expiry_str %}
+                        <tr>
+                            <td>
+                                {{ item.batch_number }}
+                            </td>
+                            <td>
+                                <strong>{{ item.product.name }}</strong>
+                            </td>
+                            <td>{{ item.production_date|date:'M d, Y' }}</td>
+                            <td>
+                                {{ item.expiry_date|date:'M d, Y' }}
+                                {% if item.expiry_date < today %}
+                                    <span class="badge bg-danger">Expired</span>
+                                {% elif item.expiry_date <= three_days_ahead %}
+                                    <span class="badge bg-warning text-dark">Expiring Soon</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ item.quantity }} {{ item.unit }}</td>
+                            <td>
+                                <strong>{{ item.remaining_quantity }} {{ item.unit }}</strong>
+                            </td>
+                            <td>
+                                <span class="badge 
+                                    {% if item.status == 'available' %}bg-success
+                                    {% elif item.status == 'expired' %}bg-danger
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ item.get_status_display }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endwith %}
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4">
+                                <div class="text-muted">
+                                    <br>No finished goods in inventory.
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const writeOffBtn = document.getElementById('writeOffExpiredBtn');
+    
+    if (writeOffBtn) {
+        writeOffBtn.addEventListener('click', function() {
+            if (confirm('Are you sure you want to write off all expired goods? This will create a journal entry recording the loss and cannot be undone.')) {
+                writeOffBtn.disabled = true;
+                writeOffBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+                
+                fetch('/inventory/ajax/expire-goods/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        location.reload(); // Refresh to show updated inventory
+                    } else {
+                        alert('Error: ' + data.message);
+                        writeOffBtn.disabled = false;
+                        writeOffBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Write Off Expired Goods';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while processing expired goods.');
+                    writeOffBtn.disabled = false;
+                    writeOffBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Write Off Expired Goods';
+                });
+            }
+        });
+    }
+});
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %} 

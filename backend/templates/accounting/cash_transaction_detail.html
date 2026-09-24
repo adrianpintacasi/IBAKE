@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+
+{% block title %}Cash Transaction Details - iBAKE Cakes & Pastries{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3">Cash Transaction Details</h1>
+                <a href="{% url 'accounting:cash_transaction_list' %}" class="btn btn-secondary">
+                    Back to List
+                </a>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Transaction Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Transaction Type:</strong> 
+                                <span class="badge 
+                                    {% if transaction.transaction_type == 'OWNER_INVESTMENT' %}bg-success
+                                    {% elif transaction.transaction_type == 'OWNER_WITHDRAWAL' %}bg-danger
+                                    {% elif transaction.transaction_type == 'EQUIPMENT_PURCHASE' %}bg-info
+                                    {% elif transaction.transaction_type == 'LOAN_RECEIVED' %}bg-primary
+                                    {% elif transaction.transaction_type == 'LOAN_PAYMENT' %}bg-warning text-dark
+                                    {% elif transaction.transaction_type == 'OTHER_INCOME' %}bg-success
+                                    {% else %}bg-secondary
+                                    {% endif %}">
+                                    {{ transaction.get_transaction_type_display }}
+                                </span>
+                            </p>
+                            <p><strong>Amount:</strong> 
+                                <strong class="
+                                    {% if transaction.transaction_type in 'OWNER_INVESTMENT,LOAN_RECEIVED,OTHER_INCOME' %}text-success
+                                    {% else %}text-danger
+                                    {% endif %}">
+                                    {% if transaction.transaction_type in 'OWNER_INVESTMENT,LOAN_RECEIVED,OTHER_INCOME' %}+{% else %}-{% endif %}₱{{ transaction.amount|floatformat:2 }}
+                                </strong>
+                            </p>
+                            <p><strong>Payment Method:</strong> 
+                                <span class="badge 
+                                    {% if transaction.payment_method == 'CASH' %}bg-success
+                                    {% else %}bg-info
+                                    {% endif %}">
+                                    {{ transaction.get_payment_method_display }}
+                                </span>
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Transaction Date:</strong> {{ transaction.transaction_date|date:"M d, Y" }}</p>
+                            <p><strong>Created:</strong> {{ transaction.created_at|date:"M d, Y g:i A" }}</p>
+                            {% if transaction.journal_entry %}
+                                <p><strong>Journal Entry:</strong> 
+                                    <a href="{% url 'accounting:journal_entry_detail' transaction.journal_entry.pk %}" 
+                                       class="text-decoration-none">
+                                        JE-{{ transaction.journal_entry.entry_number }}
+                                    </a>
+                                </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12">
+                            <p><strong>Description:</strong> {{ transaction.description }}</p>
+                            {% if transaction.notes %}
+                                <p><strong>Notes:</strong> {{ transaction.notes }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if transaction.journal_entry %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Associated Journal Entry</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Account</th>
+                                    <th>Description</th>
+                                    <th class="text-end">Debit</th>
+                                    <th class="text-end">Credit</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for je_transaction in transaction.journal_entry.transaction_set.all %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ je_transaction.account.code }}</strong><br>
+                                        <small class="text-muted">{{ je_transaction.account.name }}</small>
+                                    </td>
+                                    <td>{{ je_transaction.description }}</td>
+                                    <td class="text-end">
+                                        {% if je_transaction.debit_amount %}
+                                            ₱{{ je_transaction.debit_amount|floatformat:2 }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        {% if je_transaction.credit_amount %}
+                                            ₱{{ je_transaction.credit_amount|floatformat:2 }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="table-secondary">
+                                <tr>
+                                    <th colspan="2">Totals:</th>
+                                    <th class="text-end">₱{{ transaction.journal_entry.get_total_debits|floatformat:2 }}</th>
+                                    <th class="text-end">₱{{ transaction.journal_entry.get_total_credits|floatformat:2 }}</th>
+                                </tr>
+                                <tr>
+                                    <th colspan="4" class="text-center">
+                                        {% if transaction.journal_entry.is_balanced %}
+                                            <span class="badge bg-success">Balanced ✓</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Not Balanced ✗</span>
+                                        {% endif %}
+                                    </th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 
